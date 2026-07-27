@@ -39,13 +39,13 @@
    "C7_append_stress": {
     "entries": 1000,
     "ok": true,
-    "seconds": 29.835,
+    "seconds": 11.817,
     "verify_ok": true,
     "volume": 1000
    }
   },
-  "results_path": "/workspace/scratch/14a40cc3a334/audit_maturity_1785154560/acltd/references/campaign_results.json",
-  "work": "/tmp/acltd_campaign_e7m8a78h"
+  "results_path": "acltd/references/campaign_results.json",
+  "work": "temporary_test_workspace"
  },
  "external_action_allowed": false,
  "ok": true,

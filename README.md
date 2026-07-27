@@ -56,7 +56,7 @@ Never advance without authorization.
 
 ## Current Status
 
-ACLTD v1.4.3 is **technically approved for optional pilot and homologation**, not production installation.
+ACLTD v1.4.4 is **technically approved for optional pilot and homologation**, not production installation.
 
 The audited skill package lives in:
 

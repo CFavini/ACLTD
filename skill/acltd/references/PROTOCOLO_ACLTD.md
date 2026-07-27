@@ -1,6 +1,6 @@
 # PROTOCOLO ACLTD v1.4 - Referencia Completa
 
-Versao do codigo: 1.4.3. Este documento descreve APENAS a especificacao
+Versao do codigo: 1.4.4. Este documento descreve APENAS a especificacao
 vigente. Resultados e achados de rodadas anteriores estao no Apendice A,
 que e material historico de auditoria e NAO deve ser seguido como
 especificacao.
@@ -96,25 +96,27 @@ Orcamento insuficiente para as secoes fixas = erro declarado.
 
 ## Apendice A - Historico de auditoria (obsoleto como especificacao)
 
-Material de rastreabilidade das rodadas de auditoria cruzada
-(Claude <-> IA externa <-> Favini). NAO seguir como especificacao.
+Material de rastreabilidade das rodadas de auditoria cruzada.
+NAO seguir como especificacao.
 
 - R1 (v1.0->v1.1, achados A1-A5 de Favini): append apos tamper; rollback
   coordenado; fato sem fonte; queda entre checkpoint e ledger; caminho
   fixo. Suite da epoca: 10 -> 17 testes.
-- R2 (v1.1->v1.2, IA externa, A6-A10): ancora corrompida com excecao
+- R2 (v1.1->v1.2, A6-A10): ancora corrompida com excecao
   crua; seq nao monotonico; shape invalido; restore sem revalidacao;
   provider desconhecido. Suite: 22 testes.
-- R3 (v1.2->v1.3, Claude, P1/P4 + fuzzing): delecao da ancora; role
+- R3 (v1.2->v1.3, P1/P4 + fuzzing): delecao da ancora; role
   system em transcript; bytes nao-ASCII; adopt_anchor; ancora como piso.
   Suite: 33 testes.
-- R4 (v1.3->v1.4, IA externa, F1-F7): classe raw-vs-parseado (chave
+- R4 (v1.3->v1.4, F1-F7): classe raw-vs-parseado (chave
   duplicada, linha nao canonica), NaN em ledger/checkpoint, payload nao
   serializavel, resume nao-total, deriva documental. Suite: 41 testes.
-- R5 (v1.4->v1.4.1, IA externa, G1-G7): espacos nas bordas, linhas em
+- R5 (v1.4->v1.4.1, G1-G7): espacos nas bordas, linhas em
   branco, schemas malignos em checkpoint/ancora, cabecalho do resume
   defasado, protocolo com blocos obsoletos, T38 fraco.
-- R6 (v1.4.1->v1.4.2, Codex, H1-H4): ancora atrasada demais, escrita LF
+- R6 (v1.4.1->v1.4.2, H1-H4): ancora atrasada demais, escrita LF
   explicita para Windows, kind fora da whitelist e payload nao-objeto.
-- R7 (v1.4.2->v1.4.3, Codex, I1-I2): self-test portavel para Windows/Git
+- R7 (v1.4.2->v1.4.3, I1-I2): self-test portavel para Windows/Git
   Bash em T16/T20 e provedores tencent/nous aceitos explicitamente.
+- R8 (v1.4.3->v1.4.4): saneamento de metadados publicos e normalizacao de
+  caminhos em resultados empacotados. Sem mudanca de schema.

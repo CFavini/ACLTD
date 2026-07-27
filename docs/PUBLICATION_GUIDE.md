@@ -80,7 +80,7 @@ Recommended rules:
 7. Enable secret scanning and push protection.
 8. Enable private vulnerability reporting.
 9. Add topics.
-10. Create the first release: `v1.4.3-homologation`.
+10. Create the first release: `v1.4.4-homologation`.
 
 See [Publish Commands](PUBLISH_COMMANDS.md) for a ready command sequence.
 

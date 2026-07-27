@@ -1,7 +1,7 @@
 # -*- coding: ascii -*-
-"""ACLTD Context Pack v1.4.3 - reconstrucao de contexto agnostica de provedor.
+"""ACLTD Context Pack v1.4.4 - reconstrucao de contexto agnostica de provedor.
 
-Objetivo: apos reboot ou troca de API (LM Studio, Ollama, Claude API, OpenAI),
+Objetivo: apos reboot ou troca de API (LM Studio, Ollama, Anthropic API, OpenAI),
 reconstruir um prompt de retomada IDENTICO em conteudo, apenas adaptado ao
 formato de mensagens de cada provedor. Tencent/Nous sao tratados como
 envelope OpenAI-like quando usados por gateways compativeis.

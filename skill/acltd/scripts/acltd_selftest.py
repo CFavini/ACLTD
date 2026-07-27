@@ -1,5 +1,5 @@
 # -*- coding: ascii -*-
-"""ACLTD Self-Test v1.4.3 - bateria base + testes adversariais.
+"""ACLTD Self-Test v1.4.4 - bateria base + testes adversariais.
 
 Portavel: usa tempfile (Windows/Linux/macOS). Sem caminhos fixos.
 
@@ -284,7 +284,7 @@ def t13b_crash_between_intent_and_file():
 def t14_portable_paths():
     tmp_root = os.path.realpath(tempfile.gettempdir())
     ok = os.path.realpath(WORK).startswith(tmp_root)
-    record("T14_caminhos_portaveis", ok, "WORK=" + WORK + " raiz=" + tmp_root)
+    record("T14_caminhos_portaveis", ok, "tempfile workspace verified")
 
 
 def t15_corrupt_anchor_fail_closed():

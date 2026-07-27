@@ -1,11 +1,11 @@
 ---
 name: acltd
-description: ACLTD (Agent Command Long Term Duration) - protocolo de sessao de longa duracao para agentes Hermes/Aitherion. Use SEMPRE que uma tarefa atravessar multiplos turnos, sessoes, reboots ou trocas de provedor de IA (LM Studio, Ollama, Claude API, OpenAI, Tencent/Nous), ou quando o usuario mencionar continuidade, retomada de contexto, checkpoint, sessao longa, perda de contexto ou resiliencia de agente. Garante persistencia em disco (JSONL + checkpoint atomico), cadeia de hash anti-adulteracao, retomada identica pos-reboot e contexto agnostico de provedor, com fatos ancorados em fonte para suprimir alucinacao.
+description: ACLTD (Agent Command Long Term Duration) - protocolo de sessao de longa duracao para agentes Hermes/Aitherion. Use SEMPRE que uma tarefa atravessar multiplos turnos, sessoes, reboots ou trocas de provedor de runtime (LM Studio, Ollama, Anthropic API, OpenAI, Tencent/Nous), ou quando o usuario mencionar continuidade, retomada de contexto, checkpoint, sessao longa, perda de contexto ou resiliencia de agente. Garante persistencia em disco (JSONL + checkpoint atomico), cadeia de hash anti-adulteracao, retomada identica pos-reboot e contexto agnostico de provedor, com fatos ancorados em fonte para suprimir alucinacao.
 ---
 
 # ACLTD - Agent Command Long Term Duration
 
-Versao auditada: v1.4.3.
+Versao auditada: v1.4.4.
 
 Protocolo fail-closed de continuidade de sessao para os agentes do Hermes.
 Toda memoria vive em DISCO (nunca apenas em RAM): reboot dissolve estado em
@@ -89,7 +89,7 @@ requires_favini, data}.
 
 - Ledger:      reports/aitherion/acltd/acltd_ledger.jsonl
 - Checkpoints: reports/aitherion/acltd/state/checkpoint.json
-- Scripts:     app/local_office/acltd/ (entregues via disco para Codex Local)
+- Scripts:     app/local_office/acltd/ (entrega local por disco)
 
 ## Limites conhecidos (declarados)
 

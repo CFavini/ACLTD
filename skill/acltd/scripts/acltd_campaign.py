@@ -1,5 +1,5 @@
 # -*- coding: ascii -*-
-"""ACLTD Campaign Runner v1.4.3 - campanha estendida reprodutivel.
+"""ACLTD Campaign Runner v1.4.4 - campanha estendida reprodutivel.
 
 Executa cenarios hostis deterministas de corrupcao, queda e reboot. Nao
 substitui acltd_selftest.py; serve para reproduzir references/campaign_results.
@@ -188,12 +188,16 @@ def main():
     ok = all(c["ok"] for c in campaigns.values())
     out = {"ok": ok, "source": "acltd_campaign",
            "external_action_allowed": False, "requires_favini": True,
-           "data": {"work": work, "campaigns": campaigns}}
+           "data": {"work": "temporary_test_workspace",
+                    "campaigns": campaigns}}
     if update_reference:
         out_path = os.path.join(ROOT, "references", "campaign_results.json")
     else:
         out_path = os.path.join(work, "campaign_results.json")
-    out["data"]["results_path"] = out_path
+    if update_reference:
+        out["data"]["results_path"] = "acltd/references/campaign_results.json"
+    else:
+        out["data"]["results_path"] = "temporary_test_workspace/campaign_results.json"
     _write(out_path, json.dumps(out, indent=1, sort_keys=True) + "\n")
     print(json.dumps(out, sort_keys=True))
     return 0 if ok else 1

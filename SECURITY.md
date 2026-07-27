@@ -6,7 +6,7 @@ ACLTD is recovery infrastructure. Security reports are treated seriously because
 
 | Version | Status |
 | --- | --- |
-| 1.4.3 | Homologation / optional pilot |
+| 1.4.4 | Homologation / optional pilot |
 | earlier versions | Historical audit only |
 
 ## Report a Vulnerability

@@ -1,4 +1,4 @@
-# ACLTD v1.4.3 English Brief
+# ACLTD v1.4.4 English Brief
 
 The audited `skill/acltd/SKILL.md` is preserved in its original language to protect audit traceability.
 
@@ -29,4 +29,4 @@ It does not allow the model to invent missing state.
 
 ## Homologation Status
 
-Version 1.4.3 is mature enough for optional pilot and incident recovery observation. It is not approved for automatic production installation.
+Version 1.4.4 is mature enough for optional pilot and incident recovery observation. It is not approved for automatic production installation.

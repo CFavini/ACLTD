@@ -10,7 +10,7 @@
    {
     "test": "T1_cadeia_hash",
     "ok": true,
-    "detail": "{\"entries\": 5, \"head_hash\": \"de2b9fafa310c46d9aea88ed94c2d7a6ca4d7438d56828f8c4daa83d83711e3e\", \"anchored\": true}"
+    "detail": "{\"entries\": 5, \"head_hash\": \"3f0e3462c6a6a7543d454154242fc033c4f77e4e691c4e65f10f700edda61392\", \"anchored\": true}"
    },
    {
     "test": "T2_deteccao_tamper",
@@ -90,7 +90,7 @@
    {
     "test": "T14_caminhos_portaveis",
     "ok": true,
-    "detail": "WORK=/tmp/acltd_selftest_k18t6zce raiz=/tmp"
+    "detail": "tempfile workspace verified"
    },
    {
     "test": "T15_ancora_corrompida_fail_closed",
@@ -150,7 +150,7 @@
    {
     "test": "T26_ancora_tmp_abandonada",
     "ok": true,
-    "detail": "{\"entries\": 1, \"head_hash\": \"f02ba4bae513c87b0ca41f02a34392313215df91d12a84bee6239f311cd9041e\", \"anchored\": true}"
+    "detail": "{\"entries\": 1, \"head_hash\": \"56bc39fa70433f37e2914dfb912a36568393d5b78836fd62c77ee6dfc7528fb6\", \"anchored\": true}"
    },
    {
     "test": "T27_payload_nao_ascii",
@@ -225,7 +225,7 @@
    {
     "test": "T41_resume_versionado",
     "ok": true,
-    "detail": "esperado v1.4.3"
+    "detail": "esperado v1.4.4"
    },
    {
     "test": "T42_ancora_atrasada_demais_recusada",

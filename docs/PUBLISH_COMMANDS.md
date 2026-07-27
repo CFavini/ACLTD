@@ -8,8 +8,8 @@ This workspace checkout already has:
 
 - branch: `main`;
 - remote: `https://github.com/Cfavini/acltd.git`;
-- tag: `v1.4.3-homologation`;
-- initial commit: `Initial public homologation release for ACLTD v1.4.3`.
+- tag: `v1.4.4-homologation`;
+- initial commit: `Initial public homologation release for ACLTD v1.4.4`.
 
 Create the empty public GitHub repository, then push:
 
@@ -20,7 +20,7 @@ gh repo create Cfavini/acltd \
   --homepage "https://Cfavini.github.io/acltd/"
 
 git push -u origin main
-git push origin v1.4.3-homologation
+git push origin v1.4.4-homologation
 ```
 
 ## If You Extracted the ZIP Somewhere Else
@@ -31,8 +31,8 @@ git push origin v1.4.3-homologation
 git init
 git branch -M main
 git add .
-git commit -m "Initial public homologation release for ACLTD v1.4.3"
-git tag -a v1.4.3-homologation -m "ACLTD v1.4.3 homologation candidate"
+git commit -m "Initial public homologation release for ACLTD v1.4.4"
+git tag -a v1.4.4-homologation -m "ACLTD v1.4.4 homologation candidate"
 ```
 
 ## Create Public GitHub Repository
@@ -59,7 +59,7 @@ git push -u origin main
 ## Push First Release Tag
 
 ```bash
-git push origin v1.4.3-homologation
+git push origin v1.4.4-homologation
 ```
 
 ## After Push

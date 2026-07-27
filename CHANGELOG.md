@@ -1,12 +1,15 @@
 # Changelog
 
-## 1.4.3 - Homologation Candidate
+## 1.4.4 - Sanitized Homologation Candidate
 
 - Passed technical smoke validation.
 - Passed full self-test suite.
 - Passed extended corruption, checkpoint, reboot, and append campaign.
 - Added explicit Tencent and Nous provider envelope support.
 - Preserved fail-closed behavior for malformed ledgers, delayed anchors, rollback, duplicate JSON keys, invalid constants, and non-canonical JSONL.
+- Sanitized public package metadata and packaged validation reports.
+- Normalized temporary test paths in generated result files.
+- Cleaned legacy audit wording from packaged specification history.
 
 ## Earlier Versions
 

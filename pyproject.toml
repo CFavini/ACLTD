@@ -1,6 +1,6 @@
 [project]
 name = "acltd"
-version = "1.4.3"
+version = "1.4.4"
 description = "Agent Command Long-Term Duration: deterministic, auditable, fail-closed continuity for long-running AI agent missions."
 readme = "README.md"
 requires-python = ">=3.11"

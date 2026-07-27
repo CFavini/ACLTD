@@ -1,5 +1,5 @@
 # -*- coding: ascii -*-
-"""ACLTD Checkpoint v1.4.3 - snapshot atomico com commit em duas fases.
+"""ACLTD Checkpoint v1.4.4 - snapshot atomico com commit em duas fases.
 
 Correcoes v1.1 (achados adversariais A3/A4):
 - A3: validacao de estado. pinned_fact sem 'source' ou sem 'text' nao
@@ -36,6 +36,8 @@ Correcoes v1.4.2:
 Correcoes v1.4.3:
 - provedores tencent/nous aceitos explicitamente para o runtime atual do
   Arconte quando usados como envelope OpenAI-like.
+Correcoes v1.4.4:
+- Saneamento de metadados publicos do pacote, sem mudanca de schema.
 Correcoes v1.4 (achados F3/F5 + JSON estrito):
 - escrita com allow_nan=False: estado com NaN/Infinity ou tipos nao
   serializaveis vira CheckpointError, nunca grava JSON fora do padrao.

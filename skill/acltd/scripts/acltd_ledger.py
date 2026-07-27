@@ -1,5 +1,5 @@
 # -*- coding: ascii -*-
-"""ACLTD Ledger v1.4.3 - append-only JSONL com cadeia SHA-256 e ancora monotonica.
+"""ACLTD Ledger v1.4.4 - append-only JSONL com cadeia SHA-256 e ancora monotonica.
 
 Correcoes v1.1 (achados adversariais A1/A2):
 - A1: append verifica a cadeia INTEIRA antes de anexar (fail-closed).
@@ -33,6 +33,8 @@ Correcoes v1.4.2:
 Correcoes v1.4.3:
 - Smoke test portavel em Windows/Git Bash e provedores tencent/nous
   explicitamente reconhecidos pelo pacote de contexto.
+Correcoes v1.4.4:
+- Saneamento de metadados publicos do pacote, sem mudanca de schema.
 Correcoes v1.4 (achados F1-F5, correcao DE CLASSE):
 - DISCIPLINA DE LINHA CANONICA: cada linha do ledger deve ser IDENTICA,
   byte a byte, a canonizacao do objeto que ela declara. Isso fecha de uma
@@ -57,7 +59,7 @@ KNOWN_ENTRY_SCHEMAS = ("acltd-1.0", "acltd-1.1", "acltd-1.2",
 KNOWN_ANCHOR_SCHEMAS = ("acltd-anchor-1.1", "acltd-anchor-1.3",
                         "acltd-anchor-1.4")
 SCHEMA_VERSION = "acltd-1.4"
-ACLTD_VERSION = "1.4.3"
+ACLTD_VERSION = "1.4.4"
 MAX_ANCHOR_LAG = 1
 KNOWN_KINDS = ("turn", "fact", "decision", "gap", "note",
                "checkpoint_intent", "checkpoint_commit", "checkpoint")
