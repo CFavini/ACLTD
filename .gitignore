@@ -1,0 +1,25 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+dist/
+build/
+*.egg-info/
+
+# Runtime recovery data must not be committed.
+reports/
+*.jsonl
+*.anchor
+checkpoint.json
+checkpoint.json.tmp
+
+# Local archives and private material.
+*.zip
+*.tar
+*.tar.gz
+*.7z
+.env
+.env.*

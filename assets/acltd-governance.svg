@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="560" viewBox="0 0 1200 560" role="img" aria-labelledby="title desc">
+  <title id="title">ACLTD contribution governance</title>
+  <desc id="desc">A diagram showing contributor branch, pull request, CI, maintainer review, and protected main.</desc>
+  <rect width="1200" height="560" fill="#f6f8fb"/>
+  <rect x="54" y="60" width="1092" height="440" rx="24" fill="#ffffff" stroke="#d0d7e2"/>
+  <text x="92" y="122" font-family="Inter, Arial, sans-serif" font-size="34" font-weight="700" fill="#18202f">Contribution Flow</text>
+  <text x="92" y="158" font-family="Inter, Arial, sans-serif" font-size="17" fill="#526071">Open collaboration through branches and pull requests; protected main remains stable.</text>
+  <g font-family="Inter, Arial, sans-serif">
+    <g transform="translate(92 246)">
+      <rect width="170" height="104" rx="14" fill="#eef4ff" stroke="#9db7ff"/>
+      <text x="85" y="44" text-anchor="middle" font-size="18" font-weight="700" fill="#2146c7">Contributor</text>
+      <text x="85" y="70" text-anchor="middle" font-size="14" fill="#344054">fork or branch</text>
+    </g>
+    <path d="M276 298 H356" stroke="#8a98ad" stroke-width="3" marker-end="url(#arrow)"/>
+    <g transform="translate(370 246)">
+      <rect width="170" height="104" rx="14" fill="#ecfdf3" stroke="#75c49b"/>
+      <text x="85" y="44" text-anchor="middle" font-size="18" font-weight="700" fill="#087443">Pull Request</text>
+      <text x="85" y="70" text-anchor="middle" font-size="14" fill="#344054">context and tests</text>
+    </g>
+    <path d="M554 298 H634" stroke="#8a98ad" stroke-width="3" marker-end="url(#arrow)"/>
+    <g transform="translate(648 246)">
+      <rect width="170" height="104" rx="14" fill="#fff7e6" stroke="#f0b85a"/>
+      <text x="85" y="44" text-anchor="middle" font-size="18" font-weight="700" fill="#9a5b00">CI</text>
+      <text x="85" y="70" text-anchor="middle" font-size="14" fill="#344054">quick_validate</text>
+    </g>
+    <path d="M832 298 H912" stroke="#8a98ad" stroke-width="3" marker-end="url(#arrow)"/>
+    <g transform="translate(926 246)">
+      <rect width="170" height="104" rx="14" fill="#fff1f3" stroke="#f4a6b4"/>
+      <text x="85" y="44" text-anchor="middle" font-size="18" font-weight="700" fill="#b4233c">Maintainer</text>
+      <text x="85" y="70" text-anchor="middle" font-size="14" fill="#344054">review and merge</text>
+    </g>
+    <rect x="418" y="402" width="364" height="58" rx="14" fill="#f2f4f7" stroke="#c6ceda"/>
+    <text x="600" y="438" text-anchor="middle" font-size="17" font-weight="700" fill="#18202f">Protected main: no direct commits</text>
+  </g>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#8a98ad"/>
+    </marker>
+  </defs>
+</svg>

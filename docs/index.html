@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en-US">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>ACLTD - Fail-Closed Continuity for Long-Running AI Agents</title>
+    <meta name="description" content="ACLTD is deterministic, auditable recovery infrastructure for long-running AI agent missions, with append-only ledgers, checkpoints, hash chains, and human-gated restore.">
+    <meta property="og:title" content="ACLTD - Fail-Closed Continuity for Long-Running AI Agents">
+    <meta property="og:description" content="Deterministic, auditable recovery infrastructure for long-running AI agent missions.">
+    <meta property="og:type" content="website">
+    <meta property="og:image" content="assets/acltd-og.svg">
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareSourceCode",
+        "name": "ACLTD",
+        "alternateName": "Agent Command Long-Term Duration",
+        "description": "Deterministic, auditable, fail-closed continuity and recovery for long-running AI agent missions.",
+        "programmingLanguage": "Python",
+        "license": "https://opensource.org/license/mit",
+        "codeRepository": "https://github.com/Cfavini/acltd",
+        "applicationCategory": "DeveloperApplication"
+      }
+    </script>
+    <style>
+      :root {
+        color-scheme: light;
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        color: #18202f;
+        background: #f6f8fb;
+      }
+      body { margin: 0; }
+      main { max-width: 1040px; margin: 0 auto; padding: 56px 24px; }
+      .hero { display: grid; gap: 28px; grid-template-columns: 1.1fr .9fr; align-items: center; }
+      h1 { font-size: 44px; line-height: 1.04; margin: 0 0 16px; letter-spacing: 0; }
+      p { font-size: 18px; line-height: 1.65; margin: 0 0 16px; color: #344054; }
+      .pill { display: inline-flex; padding: 6px 10px; border: 1px solid #c7d7fe; border-radius: 999px; color: #2146c7; background: #eef4ff; font-size: 14px; margin-bottom: 18px; }
+      .actions { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 24px; }
+      a.button { color: white; background: #2146c7; text-decoration: none; padding: 12px 16px; border-radius: 8px; font-weight: 700; }
+      a.secondary { color: #2146c7; background: white; border: 1px solid #c7d7fe; }
+      img { width: 100%; height: auto; }
+      .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 48px; }
+      .card { background: white; border: 1px solid #e4e7ec; border-radius: 8px; padding: 20px; }
+      .card h2 { font-size: 18px; margin: 0 0 10px; }
+      .card p { font-size: 15px; }
+      @media (max-width: 820px) {
+        .hero, .grid { grid-template-columns: 1fr; }
+        h1 { font-size: 34px; }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section class="hero">
+        <div>
+          <div class="pill">Homologation-ready recovery infrastructure</div>
+          <h1>ACLTD: Agent Command Long-Term Duration</h1>
+          <p>ACLTD is a fail-closed continuity and recovery layer for long-running AI agents that must survive lost sessions, process failures, provider swaps, and incomplete handovers.</p>
+          <p>It keeps verifiable persistent records as the source of truth and treats MCP as an interface boundary, not a memory substitute.</p>
+          <div class="actions">
+            <a class="button" href="https://github.com/Cfavini/acltd">View on GitHub</a>
+            <a class="button secondary" href="./ARCHITECTURE.md">Read Architecture</a>
+          </div>
+        </div>
+        <img src="assets/acltd-og.svg" alt="ACLTD recovery system diagram">
+      </section>
+      <section class="grid" aria-label="Core capabilities">
+        <div class="card"><h2>Deterministic</h2><p>Restores state from ledger, checkpoint, and anchor records rather than model memory.</p></div>
+        <div class="card"><h2>Auditable</h2><p>Preserves sourced facts, hash chains, gaps, and validation evidence for human review.</p></div>
+        <div class="card"><h2>Fail-Closed</h2><p>Refuses corrupted, rolled-back, malformed, or ambiguous recovery state.</p></div>
+      </section>
+    </main>
+  </body>
+</html>

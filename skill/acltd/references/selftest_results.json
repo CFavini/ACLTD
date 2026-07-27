@@ -1,0 +1,257 @@
+{
+ "ok": true,
+ "source": "acltd_selftest",
+ "external_action_allowed": false,
+ "requires_favini": true,
+ "data": {
+  "passed": 49,
+  "total": 49,
+  "results": [
+   {
+    "test": "T1_cadeia_hash",
+    "ok": true,
+    "detail": "{\"entries\": 5, \"head_hash\": \"de2b9fafa310c46d9aea88ed94c2d7a6ca4d7438d56828f8c4daa83d83711e3e\", \"anchored\": true}"
+   },
+   {
+    "test": "T2_deteccao_tamper",
+    "ok": true,
+    "detail": "{\"error\": \"hash adulterado\", \"seq\": 1}"
+   },
+   {
+    "test": "T3_crash_meio_escrita",
+    "ok": true,
+    "detail": ""
+   },
+   {
+    "test": "T4_reboot_processo_novo",
+    "ok": true,
+    "detail": ""
+   },
+   {
+    "test": "T5_restore_idempotente",
+    "ok": true,
+    "detail": ""
+   },
+   {
+    "test": "T6_troca_provedor",
+    "ok": true,
+    "detail": "turnos 2/2"
+   },
+   {
+    "test": "T7_compactacao_preserva_fatos",
+    "ok": true,
+    "detail": "turnos 40/200"
+   },
+   {
+    "test": "T7b_orcamento_impossivel_fail_closed",
+    "ok": true,
+    "detail": ""
+   },
+   {
+    "test": "T8_rollback_so_checkpoint_recusado",
+    "ok": true,
+    "detail": "checkpoint nao corresponde a intent/commit do ledger (possivel rollback)"
+   },
+   {
+    "test": "T9_ascii_safe_ps51",
+    "ok": true,
+    "detail": "[]"
+   },
+   {
+    "test": "T10_append_apos_tamper_recusado",
+    "ok": true,
+    "detail": "LedgerError levantado"
+   },
+   {
+    "test": "T11_rollback_coordenado_detectado",
+    "ok": true,
+    "detail": "ledger invalido: {'error': 'ledger truncado abaixo da ancora (rollback)', 'anchor_seq': 3, 'entries': 2}"
+   },
+   {
+    "test": "T12_fato_sem_fonte_recusado",
+    "ok": true,
+    "detail": "estado invalido: pinned_fact[3] sem 'source' auditavel"
+   },
+   {
+    "test": "T13_queda_antes_commit_recuperada",
+    "ok": true,
+    "detail": "recuperado: queda entre checkpoint e commit; commit reparado"
+   },
+   {
+    "test": "T13r_reparo_persistente",
+    "ok": true,
+    "detail": ""
+   },
+   {
+    "test": "T13b_queda_antes_arquivo_recupera_anterior",
+    "ok": true,
+    "detail": "recuperado: queda antes da escrita do novo checkpoint; restaurado ultimo estado commitado; gap declarado (intent seq 2 perdido)"
+   },
+   {
+    "test": "T14_caminhos_portaveis",
+    "ok": true,
+    "detail": "WORK=/tmp/acltd_selftest_k18t6zce raiz=/tmp"
+   },
+   {
+    "test": "T15_ancora_corrompida_fail_closed",
+    "ok": true,
+    "detail": "{\"error\": \"ancora invalida: Expecting property name enclosed in double quotes: line 1 column 2 (char 1)\"}"
+   },
+   {
+    "test": "T16_seq_nao_monotonico_recusado",
+    "ok": true,
+    "detail": "{\"error\": \"seq nao monotonico\", \"seq\": 0, \"expected_seq\": 1}"
+   },
+   {
+    "test": "T17_estado_shape_invalido_recusado",
+    "ok": true,
+    "detail": "estado invalido: last_turns[0] nao e objeto"
+   },
+   {
+    "test": "T18_restore_revalida_estado",
+    "ok": true,
+    "detail": "estado invalido: pinned_fact[0] sem 'source' auditavel"
+   },
+   {
+    "test": "T19_provider_desconhecido_recusado",
+    "ok": true,
+    "detail": "estado invalido: provider.name invalido: provedor-fantasma"
+   },
+   {
+    "test": "T20_delecao_ancora_rollback_recusado",
+    "ok": true,
+    "detail": "ledger invalido: {'error': 'ledger nao vazio sem ancora (delecao da ancora ou ledger legado sem adoc"
+   },
+   {
+    "test": "T21_role_injection_recusado",
+    "ok": true,
+    "detail": "estado invalido: last_turns[0] role invalido (permitidos: user, assistant)"
+   },
+   {
+    "test": "T22_fuzz_ledger_300",
+    "ok": true,
+    "detail": "excecoes cruas=0 aceitos=0"
+   },
+   {
+    "test": "T23_fuzz_checkpoint_300",
+    "ok": true,
+    "detail": "excecoes cruas=0 aceites indevidos=0"
+   },
+   {
+    "test": "T24_fuzz_ancora_200",
+    "ok": true,
+    "detail": "excecoes cruas=0 aceitos=0"
+   },
+   {
+    "test": "T25_truncamento_ledger",
+    "ok": true,
+    "detail": "66 posicoes; excecoes=0 aceitos com perda=0"
+   },
+   {
+    "test": "T26_ancora_tmp_abandonada",
+    "ok": true,
+    "detail": "{\"entries\": 1, \"head_hash\": \"f02ba4bae513c87b0ca41f02a34392313215df91d12a84bee6239f311cd9041e\", \"anchored\": true}"
+   },
+   {
+    "test": "T27_payload_nao_ascii",
+    "ok": true,
+    "detail": "arquivo ASCII=True roundtrip=True"
+   },
+   {
+    "test": "T28_restore_funcao_total",
+    "ok": true,
+    "detail": "[]"
+   },
+   {
+    "test": "T29_adocao_ancora_legada",
+    "ok": true,
+    "detail": "sem ancora recusado=True adocao=True rollback pos-adocao recusado=True"
+   },
+   {
+    "test": "T30_ancora_atrasada_pos_queda",
+    "ok": true,
+    "detail": "piso aceito=True reancorado em seq=2"
+   },
+   {
+    "test": "T31_chave_duplicada_recusada",
+    "ok": true,
+    "detail": "json invalido na linha 0: chave JSON duplicada: agent"
+   },
+   {
+    "test": "T32_linha_nao_canonica_recusada",
+    "ok": true,
+    "detail": "linha 0 nao canonica (raw difere do canonizado; possivel adulteracao textual)"
+   },
+   {
+    "test": "T33_nan_checkpoint_recusado",
+    "ok": true,
+    "detail": "escrita=True leitura=True"
+   },
+   {
+    "test": "T34_nan_ledger_recusado",
+    "ok": true,
+    "detail": "append=True verify=True"
+   },
+   {
+    "test": "T35_nao_serializavel_fail_closed",
+    "ok": true,
+    "detail": "ledger=True checkpoint=True"
+   },
+   {
+    "test": "T36_resume_role_system_recusado",
+    "ok": true,
+    "detail": "estado invalido: last_turns[0] role invalido (permitidos: user, assistant)"
+   },
+   {
+    "test": "T37_resume_funcao_total",
+    "ok": true,
+    "detail": "falhas=0/7"
+   },
+   {
+    "test": "T38_consistencia_documental",
+    "ok": true,
+    "detail": "[]"
+   },
+   {
+    "test": "T39_bordas_linhas_branco_recusadas",
+    "ok": true,
+    "detail": "[]"
+   },
+   {
+    "test": "T40_schemas_malignos_recusados",
+    "ok": true,
+    "detail": "ckpt=True ancora=True entrada=True"
+   },
+   {
+    "test": "T41_resume_versionado",
+    "ok": true,
+    "detail": "esperado v1.4.3"
+   },
+   {
+    "test": "T42_ancora_atrasada_demais_recusada",
+    "ok": true,
+    "detail": "ancora atrasada demais"
+   },
+   {
+    "test": "T43_newline_windows_contract",
+    "ok": true,
+    "detail": "lf=True crlf_recusado=True source=True"
+   },
+   {
+    "test": "T44_kind_whitelist",
+    "ok": true,
+    "detail": "append=True verify=True"
+   },
+   {
+    "test": "T45_payload_objeto_obrigatorio",
+    "ok": true,
+    "detail": "append=True verify=True"
+   },
+   {
+    "test": "T46_tencent_nous_providers",
+    "ok": true,
+    "detail": "tencent=True nous=True"
+   }
+  ]
+ }
+}

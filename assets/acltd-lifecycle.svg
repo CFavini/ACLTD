@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="560" viewBox="0 0 1200 560" role="img" aria-labelledby="title desc">
+  <title id="title">ACLTD recovery lifecycle</title>
+  <desc id="desc">A professional diagram showing mission execution, ledger append, checkpoint, interruption, restore, and provider resume.</desc>
+  <rect width="1200" height="560" fill="#f6f8fb"/>
+  <rect x="52" y="62" width="1096" height="436" rx="24" fill="#ffffff" stroke="#d0d7e2"/>
+  <text x="92" y="122" font-family="Inter, Arial, sans-serif" font-size="34" font-weight="700" fill="#18202f">ACLTD Recovery Lifecycle</text>
+  <text x="92" y="158" font-family="Inter, Arial, sans-serif" font-size="17" fill="#526071">Disk-backed truth survives failures; models only consume verified resume context.</text>
+  <g font-family="Inter, Arial, sans-serif">
+    <g transform="translate(92 222)">
+      <rect width="158" height="108" rx="14" fill="#eef4ff" stroke="#9db7ff"/>
+      <text x="79" y="44" text-anchor="middle" font-size="18" font-weight="700" fill="#2146c7">Mission</text>
+      <text x="79" y="72" text-anchor="middle" font-size="14" fill="#344054">turns and facts</text>
+    </g>
+    <path d="M262 276 H346" stroke="#8a98ad" stroke-width="3" marker-end="url(#arrow)"/>
+    <g transform="translate(358 222)">
+      <rect width="158" height="108" rx="14" fill="#ecfdf3" stroke="#75c49b"/>
+      <text x="79" y="44" text-anchor="middle" font-size="18" font-weight="700" fill="#087443">Ledger</text>
+      <text x="79" y="72" text-anchor="middle" font-size="14" fill="#344054">append-only JSONL</text>
+    </g>
+    <path d="M528 276 H612" stroke="#8a98ad" stroke-width="3" marker-end="url(#arrow)"/>
+    <g transform="translate(624 222)">
+      <rect width="158" height="108" rx="14" fill="#fff7e6" stroke="#f0b85a"/>
+      <text x="79" y="44" text-anchor="middle" font-size="18" font-weight="700" fill="#9a5b00">Checkpoint</text>
+      <text x="79" y="72" text-anchor="middle" font-size="14" fill="#344054">atomic snapshot</text>
+    </g>
+    <path d="M794 276 H878" stroke="#8a98ad" stroke-width="3" marker-end="url(#arrow)"/>
+    <g transform="translate(890 222)">
+      <rect width="158" height="108" rx="14" fill="#fff1f3" stroke="#f4a6b4"/>
+      <text x="79" y="44" text-anchor="middle" font-size="18" font-weight="700" fill="#b4233c">Incident</text>
+      <text x="79" y="72" text-anchor="middle" font-size="14" fill="#344054">lost session</text>
+    </g>
+    <path d="M969 342 C940 422 430 422 390 342" fill="none" stroke="#8a98ad" stroke-width="3" marker-end="url(#arrow)"/>
+    <g transform="translate(492 382)">
+      <rect width="216" height="74" rx="14" fill="#f2f4f7" stroke="#c6ceda"/>
+      <text x="108" y="31" text-anchor="middle" font-size="18" font-weight="700" fill="#18202f">Verify and Restore</text>
+      <text x="108" y="55" text-anchor="middle" font-size="14" fill="#344054">fail closed on ambiguity</text>
+    </g>
+    <g transform="translate(740 382)">
+      <rect width="216" height="74" rx="14" fill="#eef4ff" stroke="#9db7ff"/>
+      <text x="108" y="31" text-anchor="middle" font-size="18" font-weight="700" fill="#2146c7">Provider Resume</text>
+      <text x="108" y="55" text-anchor="middle" font-size="14" fill="#344054">same content, new envelope</text>
+    </g>
+    <path d="M708 419 H728" stroke="#8a98ad" stroke-width="3" marker-end="url(#arrow)"/>
+  </g>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#8a98ad"/>
+    </marker>
+  </defs>
+</svg>

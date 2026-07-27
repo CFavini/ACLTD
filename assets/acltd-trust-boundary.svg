@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="620" viewBox="0 0 1200 620" role="img" aria-labelledby="title desc">
+  <title id="title">ACLTD trust boundary</title>
+  <desc id="desc">A diagram showing MCP interface, ACLTD recovery core, persistent truth, and human authorization boundaries.</desc>
+  <rect width="1200" height="620" fill="#f6f8fb"/>
+  <text x="70" y="78" font-family="Inter, Arial, sans-serif" font-size="34" font-weight="700" fill="#18202f">ACLTD Trust Boundary</text>
+  <text x="70" y="114" font-family="Inter, Arial, sans-serif" font-size="17" fill="#526071">MCP is an interface. Verifiable persistence is the source of truth.</text>
+  <g font-family="Inter, Arial, sans-serif">
+    <rect x="70" y="164" width="282" height="294" rx="18" fill="#eef4ff" stroke="#9db7ff"/>
+    <text x="211" y="211" text-anchor="middle" font-size="22" font-weight="700" fill="#2146c7">MCP Interface</text>
+    <text x="211" y="248" text-anchor="middle" font-size="15" fill="#344054">Resources</text>
+    <text x="211" y="278" text-anchor="middle" font-size="15" fill="#344054">Prompts</text>
+    <text x="211" y="308" text-anchor="middle" font-size="15" fill="#344054">Human-gated Tools</text>
+    <rect x="459" y="164" width="282" height="294" rx="18" fill="#ecfdf3" stroke="#75c49b"/>
+    <text x="600" y="211" text-anchor="middle" font-size="22" font-weight="700" fill="#087443">ACLTD Core</text>
+    <text x="600" y="248" text-anchor="middle" font-size="15" fill="#344054">Verify ledger</text>
+    <text x="600" y="278" text-anchor="middle" font-size="15" fill="#344054">Reconcile checkpoint</text>
+    <text x="600" y="308" text-anchor="middle" font-size="15" fill="#344054">Build resume</text>
+    <text x="600" y="338" text-anchor="middle" font-size="15" fill="#344054">Fail closed</text>
+    <rect x="848" y="164" width="282" height="294" rx="18" fill="#fff7e6" stroke="#f0b85a"/>
+    <text x="989" y="211" text-anchor="middle" font-size="22" font-weight="700" fill="#9a5b00">Persistent Truth</text>
+    <text x="989" y="248" text-anchor="middle" font-size="15" fill="#344054">Ledger</text>
+    <text x="989" y="278" text-anchor="middle" font-size="15" fill="#344054">Anchor</text>
+    <text x="989" y="308" text-anchor="middle" font-size="15" fill="#344054">Checkpoint</text>
+    <text x="989" y="338" text-anchor="middle" font-size="15" fill="#344054">Pinned sources</text>
+    <path d="M365 311 H446" stroke="#8a98ad" stroke-width="3" marker-end="url(#arrow)"/>
+    <path d="M754 311 H835" stroke="#8a98ad" stroke-width="3" marker-end="url(#arrow)"/>
+    <path d="M835 370 H754" stroke="#8a98ad" stroke-width="3" marker-end="url(#arrowLeft)"/>
+    <rect x="379" y="494" width="442" height="64" rx="14" fill="#fff1f3" stroke="#f4a6b4"/>
+    <text x="600" y="534" text-anchor="middle" font-size="18" font-weight="700" fill="#b4233c">External action authority remains with the human</text>
+  </g>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#8a98ad"/>
+    </marker>
+    <marker id="arrowLeft" markerWidth="10" markerHeight="10" refX="1" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M9,0 L9,6 L0,3 z" fill="#8a98ad"/>
+    </marker>
+  </defs>
+</svg>

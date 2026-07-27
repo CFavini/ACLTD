@@ -1,0 +1,54 @@
+{
+ "data": {
+  "campaigns": {
+   "C1_ledger_byte_mutations": {
+    "accepted": 0,
+    "ok": true,
+    "raw_exceptions": 0,
+    "volume": 5000
+   },
+   "C2_checkpoint_mutations": {
+    "accepted": 0,
+    "ok": true,
+    "raw_exceptions": 0,
+    "volume": 5000
+   },
+   "C3_anchor_garbage": {
+    "accepted": 0,
+    "ok": true,
+    "raw_exceptions": 0,
+    "volume": 2000
+   },
+   "C4_combined_corruption": {
+    "accepted": 0,
+    "ok": true,
+    "raw_exceptions": 0,
+    "volume": 1000
+   },
+   "C5_checkpoint_phase_matrix": {
+    "ok": true,
+    "raw_exceptions": 0,
+    "recovered": 30,
+    "volume": 30
+   },
+   "C6_reboot_cycles": {
+    "failures": 0,
+    "ok": true,
+    "volume": 100
+   },
+   "C7_append_stress": {
+    "entries": 1000,
+    "ok": true,
+    "seconds": 29.835,
+    "verify_ok": true,
+    "volume": 1000
+   }
+  },
+  "results_path": "/workspace/scratch/14a40cc3a334/audit_maturity_1785154560/acltd/references/campaign_results.json",
+  "work": "/tmp/acltd_campaign_e7m8a78h"
+ },
+ "external_action_allowed": false,
+ "ok": true,
+ "requires_favini": true,
+ "source": "acltd_campaign"
+}

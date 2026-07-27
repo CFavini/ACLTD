@@ -1,0 +1,25 @@
+[project]
+name = "acltd"
+version = "1.4.3"
+description = "Agent Command Long-Term Duration: deterministic, auditable, fail-closed continuity for long-running AI agent missions."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [
+  { name = "Carlos Eduardo Favini" }
+]
+keywords = [
+  "ai-agents",
+  "agent-continuity",
+  "agent-memory",
+  "mcp",
+  "model-context-protocol",
+  "checkpointing",
+  "recovery",
+  "fail-closed",
+  "hash-chain"
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"

@@ -1,0 +1,9 @@
+# Require owner review for sensitive recovery surfaces.
+* @Cfavini
+
+/skill/acltd/scripts/ @Cfavini
+/skill/acltd/SKILL.md @Cfavini
+/skill/acltd/references/ @Cfavini
+/.github/ @Cfavini
+/SECURITY.md @Cfavini
+/GOVERNANCE.md @Cfavini
