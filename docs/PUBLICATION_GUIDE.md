@@ -29,7 +29,7 @@ Deterministic, auditable, fail-closed continuity and recovery for long-running A
 After GitHub Pages is enabled, use:
 
 ```text
-https://Cfavini.github.io/acltd/
+https://cfavini.github.io/ACLTD/
 ```
 
 ## Topics
@@ -73,14 +73,14 @@ Recommended rules:
 
 1. Create a public GitHub repository.
 2. Upload this repository kit.
-3. Confirm badges, CODEOWNERS, and links point to `Cfavini/acltd`.
+3. Confirm badges, CODEOWNERS, and links point to `CFavini/ACLTD`.
 4. Enable GitHub Actions.
 5. Protect `main`.
 6. Enable Dependabot alerts.
 7. Enable secret scanning and push protection.
 8. Enable private vulnerability reporting.
 9. Add topics.
-10. Create the first release: `v1.4.4-homologation`.
+10. Create the first release: `v1.4.4-sanitized`.
 
 See [Publish Commands](PUBLISH_COMMANDS.md) for a ready command sequence.
 

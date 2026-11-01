@@ -8,8 +8,8 @@ It is not a generic memory feature. ACLTD is designed as deterministic, auditabl
 
 ![ACLTD repository cover](assets/acltd-og.svg)
 
-[![CI](https://github.com/Cfavini/acltd/actions/workflows/ci.yml/badge.svg)](https://github.com/Cfavini/acltd/actions/workflows/ci.yml)
-[![Pages](https://github.com/Cfavini/acltd/actions/workflows/pages.yml/badge.svg)](https://github.com/Cfavini/acltd/actions/workflows/pages.yml)
+[![CI](https://github.com/CFavini/ACLTD/actions/workflows/ci.yml/badge.svg)](https://github.com/CFavini/ACLTD/actions/workflows/ci.yml)
+[![Pages](https://github.com/CFavini/ACLTD/actions/workflows/pages.yml/badge.svg)](https://github.com/CFavini/ACLTD/actions/workflows/pages.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Status: Homologation](https://img.shields.io/badge/status-homologation-orange.svg)](docs/RECOVERY_POLICY.md)
 [![MCP Ready](https://img.shields.io/badge/MCP-interface_ready-4b7bec.svg)](docs/MCP_ALIGNMENT.md)

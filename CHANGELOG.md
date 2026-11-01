@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.4.5 - Repository Maintenance
+
+Repository and CI changes only. The audited `skill/acltd` package is unchanged.
+
+- Added `.gitattributes` forcing LF so the SHA256 manifest validates on Windows checkouts.
+- Added a release workflow that validates the package and attaches the repo kit, skill ZIP and `SHA256SUMS.txt` to GitHub releases.
+- Fixed the GitHub Pages hero image (served from `docs/assets/`) and the Pages asset copy step.
+- Corrected repository, Pages and release tag references to `CFavini/ACLTD` and `v1.4.4-sanitized`.
+- Updated GitHub Actions: checkout v7, setup-python v7, configure-pages v6, upload-pages-artifact v5, deploy-pages v5.
+
 ## 1.4.4 - Sanitized Homologation Candidate
 
 - Passed technical smoke validation.
