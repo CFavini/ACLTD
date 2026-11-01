@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased - Repository Maintenance
+## 1.4.5 - Repository Maintenance
 
 Repository and CI changes only. The audited `skill/acltd` package is unchanged.
 
