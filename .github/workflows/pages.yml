@@ -37,7 +37,8 @@ jobs:
         run: |
           mkdir -p _site
           cp -R docs/. _site/
-          cp -R assets _site/assets
+          mkdir -p _site/assets
+          cp -R assets/. _site/assets/
           touch _site/.nojekyll
 
       - name: Upload static site

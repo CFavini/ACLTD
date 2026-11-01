@@ -1,0 +1,8 @@
+# Keep LF on every platform. The skill package is verified against
+# MANIFEST_SHA256.txt, so CRLF conversion on Windows checkouts breaks it.
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.ico binary
+*.zip binary
