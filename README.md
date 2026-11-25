@@ -8,10 +8,11 @@ It is not a generic memory feature. ACLTD is designed as deterministic, auditabl
 
 ![ACLTD repository cover](assets/acltd-og.svg)
 
-[![CI](https://github.com/Cfavini/acltd/actions/workflows/ci.yml/badge.svg)](https://github.com/Cfavini/acltd/actions/workflows/ci.yml)
-[![Pages](https://github.com/Cfavini/acltd/actions/workflows/pages.yml/badge.svg)](https://github.com/Cfavini/acltd/actions/workflows/pages.yml)
+[![CI](https://github.com/CFavini/ACLTD/actions/workflows/ci.yml/badge.svg)](https://github.com/CFavini/ACLTD/actions/workflows/ci.yml)
+[![Pages](https://github.com/CFavini/ACLTD/actions/workflows/pages.yml/badge.svg)](https://github.com/CFavini/ACLTD/actions/workflows/pages.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Status: Homologation](https://img.shields.io/badge/status-homologation-orange.svg)](docs/RECOVERY_POLICY.md)
+[![Version: 2.0.0](https://img.shields.io/badge/version-2.0.0-2ea44f.svg)](CHANGELOG.md)
+[![Status: Stable](https://img.shields.io/badge/status-stable-2ea44f.svg)](docs/RECOVERY_POLICY.md)
 [![MCP Ready](https://img.shields.io/badge/MCP-interface_ready-4b7bec.svg)](docs/MCP_ALIGNMENT.md)
 
 ## Why ACLTD Exists
@@ -46,17 +47,22 @@ Never advance without authorization.
 
 | Capability | Purpose |
 | --- | --- |
-| Append-only JSONL ledger | Records turns, facts, decisions, gaps, notes, and checkpoint phases |
-| SHA-256 hash chain | Detects tampering and rollback attempts |
-| Atomic checkpoint writes | Supports recovery after interrupted writes |
-| Pinned facts with sources | Prevents unsupported reconstruction of state |
-| Provider-neutral resume | Rebuilds equivalent context across OpenAI-like, Anthropic-like, LM Studio, Ollama, Tencent, and Nous envelopes |
-| Fail-closed restore | Refuses malformed, corrupted, rolled-back, or under-specified state |
-| Human authorization flag | Keeps external action authority outside the agent |
+| Append-only JSONL ledger | Canonical ASCII/LF history, including explicit repair and migration records |
+| Keyed HMAC-SHA256 chain and anchor | Rejects forged history; mandatory caller key, never stored in journal |
+| External head hooks | on_head and expected_head detect authentic whole-set rollback against external evidence |
+| Exclusive OS ledger lock | Serializes writers, verification and whole checkpoint transactions; LedgerBusy timeout |
+| Incremental append | Authenticates anchor and tail; full verification on mission opening and restore |
+| Atomic two-phase checkpoint | Only latest confirmed or newest pending state can restore |
+| Approved torn-tail repair | Removes only incomplete noncanonical tail bytes; audits size/hash/approver/reason |
+| Pinned facts with sources | Preserves sourced facts and gaps as single-line trusted context |
+| Provider-neutral resume | Six identical system/user pairs; recovered summary/questions/turns are separate user data |
+| Configurable approval | Required approver, requires_approval=true; external_action_allowed=0 |
+| Optional cipher hooks | Base64 ciphertext for payload/state; no cipher dependencies or runtime test keys |
+| Explicit legacy migration | Read-only 1.x verify; distinct 2.0 journal records the legacy head |
 
 ## Current Status
 
-ACLTD v1.4.4 is **technically approved for optional pilot and homologation**, not production installation.
+ACLTD **v2.0.0** is the current stable release. Accepted by the maintainer on 2026-11-25 after field tests on the target hardware: network loss, power loss and forced shutdown. Version 1.x is historical and supported only for read-only verification and explicit migration.
 
 The audited skill package lives in:
 
@@ -80,6 +86,12 @@ PASS ascii_ps51
 PASS selftest
 {"ok": true, ...}
 ```
+
+API calls require a caller-supplied bytes key (or callable); no key is loaded by
+CLI or from environment defaults. See [adapter contract](docs/ARCHITECTURE.md),
+[protocol](skill/acltd/references/PROTOCOLO_ACLTD.md) and
+[validation summary](docs/VALIDATION.md). Data-level, identity/path, key
+service, MCP and backup policies belong to integrating adapters, outside this core.
 
 ## Architecture
 

@@ -1,16 +1,15 @@
 # Roadmap
 
-## Current Phase: Public Homologation
+## Current Phase: Stable 2.0
 
-- Publish the repository as a public open-source project.
-- Keep ACLTD v1.4.4 as an optional homologation resource.
+- ACLTD v2.0.0 is the current stable release.
+- ACLTD 1.x remains historical: read-only verification and explicit migration only.
 - Use real operational evidence only for observation, recovery analysis, and incident review.
 - Do not install or promote into production by default.
 
 ## Near Term
 
-- Add English-facing documentation without changing the audited v1.4.4 package.
-- Add CI validation for Linux and Windows.
+- Keep CI validation for Linux and Windows green on every pull request.
 - Add MCP interface design notes.
 - Add incident replay examples using sanitized fixtures.
 - Add branch protection and repository ruleset documentation.

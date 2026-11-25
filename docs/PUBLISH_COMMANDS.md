@@ -1,68 +1,33 @@
 # Publish Commands
 
-Run these commands from inside the repository folder.
+Repository: `https://github.com/CFavini/ACLTD`. Current release: `v2.0.0`.
 
-## If You Are Using This Prepared Checkout
-
-This workspace checkout already has:
-
-- branch: `main`;
-- remote: `https://github.com/Cfavini/acltd.git`;
-- tag: `v1.4.4-homologation`;
-- initial commit: `Initial public homologation release for ACLTD v1.4.4`.
-
-Create the empty public GitHub repository, then push:
+## Validate before any release
 
 ```bash
-gh repo create Cfavini/acltd \
-  --public \
-  --description "Deterministic, auditable, fail-closed continuity and recovery for long-running AI agent missions." \
-  --homepage "https://Cfavini.github.io/acltd/"
-
-git push -u origin main
-git push origin v1.4.4-homologation
+cd skill/acltd/scripts
+python quick_validate.py
 ```
 
-## If You Extracted the ZIP Somewhere Else
+Every step must print `PASS`. If any file under `skill/acltd/` changed, regenerate
+`MANIFEST_SHA256.txt` and `MANIFEST_SHA256.txt.sha256` first.
 
-## Prepare Local Git
+## Releases
+
+Releases are built by `.github/workflows/release.yml`. Pushing a `v*` tag runs
+`quick_validate.py`, builds `acltd-public-repo-kit-<tag>.zip`,
+`acltd_skill_<tag>.zip` and `SHA256SUMS.txt`, and attaches them to the GitHub
+release (creating it if needed).
 
 ```bash
-git init
-git branch -M main
-git add .
-git commit -m "Initial public homologation release for ACLTD v1.4.4"
-git tag -a v1.4.4-homologation -m "ACLTD v1.4.4 homologation candidate"
+git tag -a vX.Y.Z -m "ACLTD vX.Y.Z"
+git push origin vX.Y.Z
 ```
 
-## Create Public GitHub Repository
+To rebuild the assets of an existing release, run the **Release** workflow from
+the Actions tab with the tag name as input.
 
-With GitHub CLI:
-
-```bash
-gh repo create Cfavini/acltd \
-  --public \
-  --source=. \
-  --remote=origin \
-  --push \
-  --description "Deterministic, auditable, fail-closed continuity and recovery for long-running AI agent missions." \
-  --homepage "https://Cfavini.github.io/acltd/"
-```
-
-Or create the repository in the GitHub web UI, then run:
-
-```bash
-git remote add origin https://github.com/Cfavini/acltd.git
-git push -u origin main
-```
-
-## Push First Release Tag
-
-```bash
-git push origin v1.4.4-homologation
-```
-
-## After Push
+## Repository settings
 
 1. Enable branch protection for `main`.
 2. Enable Actions.
@@ -70,6 +35,6 @@ git push origin v1.4.4-homologation
 4. Enable secret scanning and push protection.
 5. Enable private vulnerability reporting.
 6. Add repository topics from `docs/PUBLICATION_GUIDE.md`.
-7. Enable GitHub Pages from `/docs`.
+7. Enable GitHub Pages through the Pages workflow.
 
 Do not invite external collaborators until `main` is protected.

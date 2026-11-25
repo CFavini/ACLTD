@@ -1,5 +1,5 @@
 # -*- coding: ascii -*-
-"""ACLTD Self-Test v1.4.4 - bateria base + testes adversariais.
+"""ACLTD Self-Test v2.0.0 - bateria base + testes adversariais.
 
 Portavel: usa tempfile (Windows/Linux/macOS). Sem caminhos fixos.
 
@@ -37,6 +37,16 @@ from acltd_ledger import (append_entry, verify_chain, LedgerError,
 from acltd_checkpoint import (write_checkpoint, restore_checkpoint,
                               CheckpointError)
 from acltd_context_pack import build_resume_text, to_provider_messages, canonical_content
+
+# Public fixture key, exclusively for tests. Never used by runtime defaults.
+from functools import partial
+TEST_KEY = b"ACLTD-public-test-fixture-key-2.0"
+TEST_APPROVER = "test reviewer"
+append_entry = partial(append_entry, key=TEST_KEY)
+verify_chain = partial(verify_chain, key=TEST_KEY)
+write_checkpoint = partial(write_checkpoint, key=TEST_KEY)
+restore_checkpoint = partial(restore_checkpoint, key=TEST_KEY)
+build_resume_text = partial(build_resume_text, approver=TEST_APPROVER)
 
 WORK = tempfile.mkdtemp(prefix="acltd_selftest_")
 RESULTS = []
@@ -139,7 +149,11 @@ def t4_reboot_new_process():
     d = fresh_dir("t4"); lp = os.path.join(d, "l.jsonl")
     res = write_checkpoint(d, sample_state(), lp)
     proc = subprocess.run(
-        [sys.executable, os.path.join(HERE, "acltd_checkpoint.py"), "restore", d, lp],
+        [sys.executable, "-c",
+         "import sys,json;sys.path.insert(0,sys.argv[1]);"
+         "from acltd_checkpoint import restore_checkpoint;"
+         "r=restore_checkpoint(sys.argv[2],sys.argv[3],key=" + repr(TEST_KEY) + ");"
+         "print(json.dumps({'ok':r['ok'],'data':r}));sys.exit(0 if r['ok'] else 1)", HERE, d, lp],
         capture_output=True, text=True)
     try:
         out = json.loads(proc.stdout.strip())
@@ -253,7 +267,9 @@ def t13_crash_between_ckpt_and_commit():
     body = json.dumps(st2, sort_keys=True, ensure_ascii=True, indent=1)
     dig = hashlib.sha256(body.encode("ascii")).hexdigest()
     append_entry(lp, "checkpoint_intent", {"state_sha256": dig})
-    env = {"schema": "acltd-ckpt-1.2", "ts": "t", "state_sha256": dig, "state": st2}
+    from acltd_ledger import _seal
+    env = _seal({"schema": "acltd-ckpt-2.0", "ts": "t", "state_sha256": dig,
+                 "state": st2, "encrypted": False}, TEST_KEY)
     open(os.path.join(d, "checkpoint.json"), "w").write(
         json.dumps(env, sort_keys=True, ensure_ascii=True, indent=1))
     out = restore_checkpoint(d, lp)
@@ -342,13 +358,14 @@ def t18_restore_revalidates_state():
     st["pinned_facts"] = [{"text": "fato sem fonte"}]
     dig = state_hash(st)
     append_entry(lp, "checkpoint_intent", {"state_sha256": dig})
-    env = {"schema": "acltd-ckpt-1.2", "ts": "t",
-           "state_sha256": dig, "state": st}
+    from acltd_ledger import _seal
+    env = _seal({"schema": "acltd-ckpt-2.0", "ts": "t",
+                 "state_sha256": dig, "state": st, "encrypted": False}, TEST_KEY)
     with open(os.path.join(d, "checkpoint.json"), "w", encoding="ascii") as f:
         json.dump(env, f, sort_keys=True, ensure_ascii=True, indent=1)
     out = restore_checkpoint(d, lp)
     record("T18_restore_revalida_estado",
-           (not out.get("ok")) and out.get("fail_closed"), str(out.get("error")))
+           (not out.get("ok")) and out.get("fail_closed") and "source" in str(out.get("error")), str(out.get("error")))
 
 
 def t19_unknown_provider_rejected():
@@ -574,29 +591,19 @@ def t28_restore_funcao_total():
 
 
 def t29_adocao_ancora_legada():
-    """Ledger legado sem ancora: recusado por padrao; adocao explicita
-    habilita; rollback pos-adocao detectado."""
-    from acltd_ledger import adopt_anchor
+    """2.0 forbids implicit adoption; deleting anchor never grants authority."""
+    import acltd_ledger as L
     d = fresh_dir("t29"); lp = os.path.join(d, "l.jsonl")
-    for i in range(4):
-        append_entry(lp, "note", {"i": i})
-    led_full = open(lp, "rb").read()
-    os.remove(default_anchor_path(lp))  # simular legado sem ancora
-    ok1, det1 = verify_chain(lp)
-    adopt = adopt_anchor(lp)
-    ok2, det2 = verify_chain(lp)
-    # idempotencia da adocao
-    adopt2 = adopt_anchor(lp)
-    # rollback pos-adocao: truncar uma linha
-    lines = led_full.split(b"\n")
-    open(lp, "wb").write(b"\n".join(lines[:-2]) + b"\n")
-    ok3, det3 = verify_chain(lp)
-    open(lp, "wb").write(led_full)
-    record("T29_adocao_ancora_legada",
-           (not ok1) and adopt["adopted"] and ok2
-           and (adopt2["ok"] and not adopt2["adopted"]) and (not ok3),
-           "sem ancora recusado=%s adocao=%s rollback pos-adocao recusado=%s"
-           % (not ok1, adopt["adopted"], not ok3))
+    append_entry(lp, "note", {"i": 0})
+    os.remove(default_anchor_path(lp))
+    refused = not verify_chain(lp)[0]
+    try:
+        append_entry(lp, "note", {"i": 1})
+        refused = False
+    except LedgerError:
+        pass
+    record("T29_adocao_ancora_legada", refused and not hasattr(L, "adopt_anchor"),
+           "2.0: no implicit adoption; explicit migration covered by T56")
 
 
 def t30_ancora_atrasada_pos_queda():
@@ -823,7 +830,7 @@ def t40_schemas_malignos():
     work = dict(e); work.pop("hash"); work["schema"] = "acltd-9.9"
     work["hash"] = _entry_hash(work)
     open(lp3, "w").write(_canon(work) + "\n")
-    _write_anchor(default_anchor_path(lp3), work["seq"], work["hash"])
+    _write_anchor(default_anchor_path(lp3), work["seq"], work["hash"], key=TEST_KEY)
     ok3, det3 = verify_chain(lp3)
     record("T40_schemas_malignos_recusados",
            (not r1.get("ok")) and (not ok2) and (not ok3),
@@ -882,7 +889,7 @@ def t44_kind_whitelist():
     work = dict(obj); work.pop("hash"); work["kind"] = "evil_kind"
     work["hash"] = _entry_hash(work)
     open(lp, "wb").write((_canon(work) + "\n").encode("ascii"))
-    _write_anchor(default_anchor_path(lp), work["seq"], work["hash"])
+    _write_anchor(default_anchor_path(lp), work["seq"], work["hash"], key=TEST_KEY)
     ok, det = verify_chain(lp)
     record("T44_kind_whitelist", append_reject and (not ok),
            "append=%s verify=%s" % (append_reject, not ok))
@@ -902,7 +909,7 @@ def t45_payload_objeto_obrigatorio():
     work = dict(obj); work.pop("hash"); work["payload"] = "nao-objeto"
     work["hash"] = _entry_hash(work)
     open(lp, "wb").write((_canon(work) + "\n").encode("ascii"))
-    _write_anchor(default_anchor_path(lp), work["seq"], work["hash"])
+    _write_anchor(default_anchor_path(lp), work["seq"], work["hash"], key=TEST_KEY)
     ok, det = verify_chain(lp)
     record("T45_payload_objeto_obrigatorio", append_reject and (not ok),
            "append=%s verify=%s" % (append_reject, not ok))
@@ -958,14 +965,18 @@ if __name__ == "__main__":
             t()
         except Exception as e:
             record(t.__name__ + "_EXCECAO", False, repr(e))
+    from acltd_regression import run_regressions
+    for result in run_regressions():
+        record(result["test"], result["ok"], result["detail"])
     total = len(RESULTS)
     passed = sum(1 for r in RESULTS if r["ok"])
     print("-" * 60)
     print("RESULTADO: %d/%d testes aprovados (%.1f%%)" % (passed, total, 100.0 * passed / total))
-    out_path = os.path.join(WORK, "selftest_results.json")
+    out_path = (os.path.join(os.path.dirname(HERE), "references", "selftest_results.json")
+                if "--update-reference" in sys.argv else os.path.join(WORK, "selftest_results.json"))
     with open(out_path, "w", encoding="ascii", newline="\n") as f:
         json.dump({"ok": passed == total, "source": "acltd_selftest",
-                   "external_action_allowed": False, "requires_favini": True,
+                   "external_action_allowed": False, "requires_approval": True, "approver": TEST_APPROVER,
                    "data": {"passed": passed, "total": total, "results": RESULTS}}, f, indent=1)
     print("resultados: " + out_path)
     sys.exit(0 if passed == total else 1)

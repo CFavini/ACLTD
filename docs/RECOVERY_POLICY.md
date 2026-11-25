@@ -1,8 +1,8 @@
 # Recovery Policy
 
-ACLTD v1.4.4 is approved for homologation and optional pilot use. It is not approved for automatic production installation.
+ACLTD v2.0.0 is the current stable release. Accepted by the maintainer on 2026-11-25 after field tests on the target hardware: network loss, power loss and forced shutdown. Passing technical tests never constitutes human approval of a recovered state, and no automatic production installation is authorized.
 
-## Homologation Position
+## Operating Position
 
 ACLTD may be kept available as a recovery resource when real incidents occur.
 
@@ -15,7 +15,7 @@ It may use real operational evidence for:
 - gap identification;
 - post-incident reporting.
 
-It must not use homologation access for:
+It must not use recovery access for:
 
 - production rollback;
 - production writes;
@@ -29,7 +29,7 @@ It must not use homologation access for:
 
 The project was created because real continuity incidents happened. Ignoring real operational data would make the tool less useful.
 
-The safe compromise is controlled homologation:
+The safe compromise is controlled, human-gated recovery:
 
 - real evidence may inform recovery;
 - production state is not changed;

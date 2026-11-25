@@ -1,0 +1,57 @@
+[
+ {
+  "achado": "V1",
+  "resultado": "VULNERAVEL",
+  "detalhe": "verify_chain=True apos trocar o item 42 de 'reprovado' para 'aprovado'"
+ },
+ {
+  "achado": "V2",
+  "resultado": "VULNERAVEL",
+  "detalhe": "texto de documento aceito; secao 'FATOS FIXOS' aparece 2 vezes na mensagem de sistema"
+ },
+ {
+  "achado": "V3",
+  "resultado": "VULNERAVEL",
+  "detalhe": "estado com nivel_max=3 aceito; retomada montada para ['anthropic', 'openai', 'tencent', 'nous']"
+ },
+ {
+  "achado": "V4",
+  "resultado": "VULNERAVEL",
+  "detalhe": "restore pela pasta da X com '..' devolveu 'segredo da Y'; parametros: ['state_dir', 'ledger_path', 'anchor_path', 'repair']"
+ },
+ {
+  "achado": "V5",
+  "resultado": "VULNERAVEL",
+  "detalhe": "o texto aparece legivel no checkpoint.json e no diario"
+ },
+ {
+  "achado": "V6",
+  "resultado": "VULNERAVEL",
+  "detalhe": "retomada traz a linha fixa 'nada aprovado sem Favini'"
+ },
+ {
+  "achado": "C1",
+  "resultado": "VULNERAVEL",
+  "detalhe": "verify=False (ledger sem newline final (formato nao canonico)); append=False; restore=False; rotina de reparo: nenhuma"
+ },
+ {
+  "achado": "C2",
+  "resultado": "VULNERAVEL",
+  "detalhe": "sem troca restaura 'estado B: itens 1-200'; com o arquivo antigo restaura 'estado A: itens 1-100' com a nota: recuperado: queda antes da escrita do novo checkpoint; restaurado ultimo estado commitado; gap declarado"
+ },
+ {
+  "achado": "C3",
+  "resultado": "VULNERAVEL",
+  "detalhe": "2 robos x 40 gravacoes; verify_chain=False (seq nao monotonico); gravacoes recusadas=[39, 39]"
+ },
+ {
+  "achado": "C4",
+  "resultado": "PROTEGIDO",
+  "detalhe": "ms por gravacao na entrada n: {10: 23.2, 300: 34.2, 900: 50.4, 1500: 67.4}; total 1500 entradas: 71.0s"
+ },
+ {
+  "achado": "C6",
+  "resultado": "VULNERAVEL",
+  "detalhe": "conjunto antigo inteiro: ok=True; diario novo + checkpoint antigo: ok=False; diario antigo + checkpoint novo: ok=False (recusa segura, mas a missao para)"
+ }
+]

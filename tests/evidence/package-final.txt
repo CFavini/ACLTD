@@ -1,0 +1,3 @@
+PASS manifesto  | 12 arquivos, divergentes: []
+PASS py_compile  | []
+PASS ascii_ps51  | []

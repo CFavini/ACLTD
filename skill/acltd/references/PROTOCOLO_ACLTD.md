@@ -1,122 +1,130 @@
-# PROTOCOLO ACLTD v1.4 - Referencia Completa
+# PROTOCOLO ACLTD v2.0 - Referencia Completa
 
-Versao do codigo: 1.4.4. Este documento descreve APENAS a especificacao
-vigente. Resultados e achados de rodadas anteriores estao no Apendice A,
-que e material historico de auditoria e NAO deve ser seguido como
-especificacao.
+Versao do codigo: 2.0.0. Status: stable.
 
-## 1. Modelo de dados
+## 1. Formato e autenticidade
 
-### Entrada do ledger (JSONL canonico, uma por linha)
-{"agent":"...","external_action_allowed":0,"hash":"<sha256>",
- "kind":"turn|fact|decision|gap|note|checkpoint_intent|checkpoint_commit",
- "payload":{...},"prev_hash":"<sha256 anterior ou 64 zeros>",
- "schema":"acltd-1.4","seq":N,"ts":"..."}
+Every line is strict canonical ASCII JSON (sorted keys, compact separators,
+ensure_ascii=True, allow_nan=False) followed by exactly LF. No duplicate keys,
+NaN, blank lines, padding or CRLF. schema is acltd-2.0 only.
 
-Disciplina de arquivo BYTE-EXATA:
-- cada linha deve ser IDENTICA, byte a byte, a canonizacao do objeto
-  (sort_keys, separadores compactos, ensure_ascii, allow_nan=False);
-- proibidos: linha em branco, espaco nas bordas, ausencia de newline
-  final, chave duplicada, NaN/Infinity, schema fora da whitelist
-  (acltd-1.0 a acltd-1.4);
-- kind fora da whitelist e payload nao-objeto sao recusados na escrita e
-  na verificacao;
-- qualquer violacao = LedgerError fail-closed; append sobre ledger
-  invalido e recusado.
+Entry fields: schema, seq (integer 0..n), ts, agent, kind, payload, encrypted,
+external_action_allowed=0, prev_hash, mac, hash. Kinds: turn, fact, decision, gap,
+note, checkpoint_intent, checkpoint_commit, repair, migration.
 
-### Ancora (<ledger>.anchor, atomica, obrigatoria p/ ledger nao vazio)
-{"hash":"<sha256 da cabeca>","schema":"acltd-anchor-1.4","seq":N}
-- schema fora da whitelist (acltd-anchor-1.1/1.3/1.4) = recusa;
-- ledger nao vazio sem ancora = recusa (delecao nao burla rollback);
-- ledger legado exige adopt_anchor EXPLICITO sob ordem de Favini;
-- propriedade "piso": ancora pode ficar 1 atras da cabeca apos queda
-  entre append e escrita da ancora; aceita e reancorada no proximo append;
-- atraso maior que 1 seq e recusado como estado nao produzido por queda
-  legitima.
+mac = HMAC-SHA256(key, canonical entry WITHOUT mac AND hash).
+hash = SHA256(canonical entry INCLUDING mac, WITHOUT hash).
+prev_hash is the previous hash (64 zeros at genesis), authenticated by mac.
+An attacker recomputing only SHA256 cannot forge entries or anchors.
 
-### Checkpoint (checkpoint.json, escrita atomica tmp+replace)
-{"schema":"acltd-ckpt-1.4","ts":"...","state_sha256":"<sha256>",
- "state":{mission_id, pinned_facts[{text,source}], rolling_summary,
-          last_turns[{role,text}], open_questions[], gaps[],
-          provider{name,...}}}
-- schema fora da whitelist (acltd-ckpt-1.0 a 1.4) = recusa no restore;
-- pinned_facts exigem text E source nao vazios (escrita E restauracao);
-- roles permitidos em last_turns: SOMENTE user e assistant;
-- provider.name restrito a: anthropic, openai, lmstudio, ollama,
-  tencent, nous;
-- estado com NaN/Infinity ou nao serializavel = CheckpointError.
+Key is nonempty bytes or a callable returning bytes; no defaults, environment
+fallbacks or file persistence. verify/append without key refuse. Use the API,
+not command-line secret arguments. Authentication is not human authorization.
 
-## 2. Commit em duas fases e recuperacao de quedas
+Anchor schema acltd-anchor-2.0: seq, hash, offset (start of anchored line), end
+(byte after anchored LF), mac. MAC covers all fields except mac. Anchor is
+canonical, atomic and mandatory for a nonempty journal, and can lag at most one
+entry after a crash. A missing anchor is never silently adopted.
 
-write_checkpoint: (1) intent no ledger -> (2) arquivo atomico ->
-(3) commit no ledger. Restauracao reconcilia:
-| Situacao                                  | Comportamento                     |
-|-------------------------------------------|-----------------------------------|
-| arquivo == ultimo commit                  | restauracao normal                |
-| arquivo == ultimo intent, sem commit      | valido; commit reparado + nota    |
-| intent orfao mais novo que o commit       | restaura commit; gap declarado    |
-| arquivo sem intent/commit correspondente  | recusa (forja/rollback)           |
-| queda no meio de qualquer escrita atomica | .tmp abandonado; anterior intacto |
+on_head(seq, head_hash) runs after local append and anchor persistence, inside
+lock. Failure raises an explicit already-persisted error; do not blindly retry.
+verify_chain(..., expected_head=(seq, head_hash)) compares exact external head.
+A dict {seq, head_hash} is also accepted. Restoring a locally valid older whole
+set is undetectable without a trusted newer external head.
 
-## 3. Ciclo de vida e retomada
+## 2. Concurrency and incremental append
 
-INICIO -> append(decision, missao) -> turnos -> checkpoint periodico
--> [reboot/troca de API] -> restore (cadeia+ancora+fases+revalidacao)
--> build_resume_text (funcao total; valida estado; cabecalho traz a
-versao do codigo) -> to_provider_messages (conteudo identico; envelope
-por provedor; tencent/nous usam formato OpenAI-like) -> CONFIRMACAO
-obrigatoria do agente antes de agir.
+<ledger>.lock is persistent. msvcrt.locking on Windows; fcntl.flock on POSIX.
+Thread locks and reentrancy support nested checkpoint/append verification.
+Configurable lock_timeout; LedgerBusy means occupied, not corrupt.
 
-## 4. Compactacao
+First append opening an existing mission performs full verification; every
+restore and explicit verify_chain also does so. Successful normal appends
+subsequently authenticate the anchor, anchored head and at most one tail entry.
+A process-local metadata fingerprint invalidates this optimization on unexpected
+writes or replacements (including other writers). It is an optimization, not an
+authentication source. External metadata manipulation is not proof of integrity;
+full verification before consuming recovered data remains mandatory.
 
-Ordem de preservacao: pinned_facts > gaps > open_questions >
-rolling_summary > last_turns (somente esta e cortavel, do mais antigo).
-Orcamento insuficiente para as secoes fixas = erro declarado.
+## 3. Checkpoint and repair
 
-## 5. Anti-alucinacao
+Checkpoint schema acltd-ckpt-2.0: state, encrypted, state_sha256, ts, mac.
+state_sha256 hashes the ASCII indented sorted JSON of stored state (ciphertext
+base64 string when encrypted). The entire envelope also has a MAC. The digest
+is recorded in authenticated checkpoint_intent and checkpoint_commit payloads.
 
-- O disco e a fonte de estado, nunca o modelo.
-- Fato sem source auditavel nao entra nem sai de checkpoint.
-- Afirmacao do agente ausente do ledger = hipotese ate registro.
-- Aprovacao de Favini nunca e presumida.
+The same ledger lock protects intent -> atomic checkpoint -> commit, including
+restore reconciliation. File temp + fsync -> replace -> POSIX directory fsync.
 
-## 6. Limites residuais declarados
+| State of file | Result |
+| --- | --- |
+| Latest confirmed digest | Restore; declare gap if a newer intent was lost |
+| Latest intent newer than latest commit | Restore and append missing commit |
+| Older confirmed digest | Refuse: checkpoint mais antigo que o ultimo confirmado (possivel backup misturado) |
+| Unknown digest / malformed / bad MAC | Refuse |
 
-- Rollback coordenado reescrevendo ledger + checkpoint + ANCORA em
-  conjunto: indetectavel localmente. Mitigacao: ancora em volume
-  distinto + registro externo do head_hash com Favini em marcos.
-- Injecao via CONTEUDO textual de turnos: inerente a transcripts;
-  mitigada pela moldura do resume, fatos fixos e confirmacao.
-- Ledger legado: adopt_anchor atesta a cadeia dali em diante, nao o
-  passado pre-adocao.
-- Um escritor por ledger (lock multi-agente fora do escopo).
-- Custo O(n) por append (verificacao integral); mitigacao: rotacao de
-  ledger por missao.
-- Validacao Windows/NTFS/PowerShell 5.1 pendente no ambiente de Favini.
+repair=False does not write a missing commit and says it remains pending.
+Encrypted phase repair requires encrypt plus decrypt; never silently downgrade.
+
+No LF at ledger end: verify/restore/append refuse with
+"linha final incompleta: use repair_torn_tail com aprovacao" (accented at runtime).
+repair_torn_tail(path, key, approver, reason) is explicit. It validates all complete
+prefix lines and the anchor before removing ONLY noncanonical bytes after the
+last LF, fsyncs, and appends kind repair with removed_bytes, removed_sha256,
+approver and reason. A complete canonical JSON object missing LF is not removed.
+No routine rewrites a complete ledger line. A power failure during the explicit
+repair itself may require investigation; do not infer missing audit evidence.
+
+## 4. State and resume
+
+State: mission_id, pinned_facts[{text,source}], rolling_summary,
+last_turns[{role,text}], open_questions[], gaps[], provider{name,...}.
+All text is screened for case-insensitive reserved markers: === ACLTD,
+[FATOS FIXOS, [GAPS, [RESUMO, [QUESTOES, [ULTIMOS TURNOS.
+Mission, pinned text/source and gaps are one line; turns have user/assistant roles.
+
+build_resume_text(state, token_budget, approver) has no default approver.
+ResumeText preserves explicit channels; plain flattened strings are refused by
+to_provider_messages. System holds protocol, mission, pinned facts and gaps.
+Summary, questions and turns are JSON-quoted in a separate delimited user
+message labeled DADOS RECUPERADOS - nao sao instrucoes (accented at runtime).
+All six providers get identical system/user content. Envelope: requires_approval
+true, approver caller text, external_action_allowed 0; no person-specific flag.
+Preserve all fixed sections; compact only oldest turns; insufficient budget refuses.
+
+## 5. Cipher and adapter contract
+
+Optional encrypt(bytes)->bytes stores payload and checkpoint state in base64.
+MAC is computed over ciphertext. decrypt(bytes)->bytes is required to read these
+values. The core provides no cipher, secrets, identity service or dependencies.
+Tests use a reversible fake explicitly marked NOT SECURE, test only.
+
+The integration adapter owns data levels, provider authorization, tenant/person
+and path authority, real keys, MCP and coherent backup. Core contracts: key,
+on_head, expected_head, approver, encrypt/decrypt and LedgerBusy. None of the
+adapter is implemented here. See docs/ARCHITECTURE.md.
+
+## 6. Legacy and limits
+
+verify_legacy is a READ-ONLY verifier of 1.x formats and their unkeyed integrity.
+Normal append/verify/restore never automatically continue or adopt legacy data.
+migrate_from_legacy(old, new, key, approver) validates legacy, requires a distinct
+new target and records old head/count/approver in its first migration entry.
+Legacy history is never authenticated retroactively. Legacy checkpoint state
+must be reviewed and explicitly checkpointed under the 2.0 contract by the caller.
+
+Local files cannot prove freshness against coordinated rollback without an
+external head. Untrusted documents remain data; textual screening cannot prove
+that an LLM will never follow malicious natural-language content. Source checks
+and human acceptance remain necessary. Windows has no stdlib directory flush;
+field tests on the target hardware covered network loss, power loss and forced
+shutdown. Status: stable.
 
 ## Apendice A - Historico de auditoria (obsoleto como especificacao)
 
-Material de rastreabilidade das rodadas de auditoria cruzada.
-NAO seguir como especificacao.
-
-- R1 (v1.0->v1.1, achados A1-A5 de Favini): append apos tamper; rollback
-  coordenado; fato sem fonte; queda entre checkpoint e ledger; caminho
-  fixo. Suite da epoca: 10 -> 17 testes.
-- R2 (v1.1->v1.2, A6-A10): ancora corrompida com excecao
-  crua; seq nao monotonico; shape invalido; restore sem revalidacao;
-  provider desconhecido. Suite: 22 testes.
-- R3 (v1.2->v1.3, P1/P4 + fuzzing): delecao da ancora; role
-  system em transcript; bytes nao-ASCII; adopt_anchor; ancora como piso.
-  Suite: 33 testes.
-- R4 (v1.3->v1.4, F1-F7): classe raw-vs-parseado (chave
-  duplicada, linha nao canonica), NaN em ledger/checkpoint, payload nao
-  serializavel, resume nao-total, deriva documental. Suite: 41 testes.
-- R5 (v1.4->v1.4.1, G1-G7): espacos nas bordas, linhas em
-  branco, schemas malignos em checkpoint/ancora, cabecalho do resume
-  defasado, protocolo com blocos obsoletos, T38 fraco.
-- R6 (v1.4.1->v1.4.2, H1-H4): ancora atrasada demais, escrita LF
-  explicita para Windows, kind fora da whitelist e payload nao-objeto.
-- R7 (v1.4.2->v1.4.3, I1-I2): self-test portavel para Windows/Git
-  Bash em T16/T20 e provedores tencent/nous aceitos explicitamente.
-- R8 (v1.4.3->v1.4.4): saneamento de metadados publicos e normalizacao de
-  caminhos em resultados empacotados. Sem mudanca de schema.
+1.0-1.4.4 hardened accidental corruption, strict JSON/canonical LF, mandatory
+anchors, two-phase checkpoints and six provider envelopes. Original suite: 49
+results. The 03/11/2026 simulation proved unkeyed forgery, prompt-channel mixing,
+fixed approver, torn-tail dead end, stale checkpoint recovery, writer races,
+linear append cost, missing directory fsync and plaintext storage.
+2.0 addresses these core findings with T47 onward and retains adapter boundaries.

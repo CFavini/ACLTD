@@ -1,4 +1,5 @@
 {
+ "approver": "test reviewer",
  "data": {
   "campaigns": {
    "C1_ledger_byte_mutations": {
@@ -39,7 +40,7 @@
    "C7_append_stress": {
     "entries": 1000,
     "ok": true,
-    "seconds": 11.817,
+    "seconds": 20.853,
     "verify_ok": true,
     "volume": 1000
    }
@@ -49,6 +50,6 @@
  },
  "external_action_allowed": false,
  "ok": true,
- "requires_favini": true,
+ "requires_approval": true,
  "source": "acltd_campaign"
 }

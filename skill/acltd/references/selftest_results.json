@@ -2,20 +2,21 @@
  "ok": true,
  "source": "acltd_selftest",
  "external_action_allowed": false,
- "requires_favini": true,
+ "requires_approval": true,
+ "approver": "test reviewer",
  "data": {
-  "passed": 49,
-  "total": 49,
+  "passed": 61,
+  "total": 61,
   "results": [
    {
     "test": "T1_cadeia_hash",
     "ok": true,
-    "detail": "{\"entries\": 5, \"head_hash\": \"3f0e3462c6a6a7543d454154242fc033c4f77e4e691c4e65f10f700edda61392\", \"anchored\": true}"
+    "detail": "{\"entries\": 5, \"head_hash\": \"b7bf9c799d350ef963335ad005a682401eda295cf95a2447cc0b2cb02c19a60f\", \"anchored\": true}"
    },
    {
     "test": "T2_deteccao_tamper",
     "ok": true,
-    "detail": "{\"error\": \"hash adulterado\", \"seq\": 1}"
+    "detail": "{\"error\": \"hash adulterado\", \"fail_closed\": true}"
    },
    {
     "test": "T3_crash_meio_escrita",
@@ -40,7 +41,7 @@
    {
     "test": "T7_compactacao_preserva_fatos",
     "ok": true,
-    "detail": "turnos 40/200"
+    "detail": "turnos 22/200"
    },
    {
     "test": "T7b_orcamento_impossivel_fail_closed",
@@ -50,7 +51,7 @@
    {
     "test": "T8_rollback_so_checkpoint_recusado",
     "ok": true,
-    "detail": "checkpoint nao corresponde a intent/commit do ledger (possivel rollback)"
+    "detail": "checkpoint mais antigo que o \u00faltimo confirmado (poss\u00edvel backup misturado)"
    },
    {
     "test": "T9_ascii_safe_ps51",
@@ -65,7 +66,7 @@
    {
     "test": "T11_rollback_coordenado_detectado",
     "ok": true,
-    "detail": "ledger invalido: {'error': 'ledger truncado abaixo da ancora (rollback)', 'anchor_seq': 3, 'entries': 2}"
+    "detail": "ledger invalido: {'error': 'linha nao canonica', 'fail_closed': True}"
    },
    {
     "test": "T12_fato_sem_fonte_recusado",
@@ -85,7 +86,7 @@
    {
     "test": "T13b_queda_antes_arquivo_recupera_anterior",
     "ok": true,
-    "detail": "recuperado: queda antes da escrita do novo checkpoint; restaurado ultimo estado commitado; gap declarado (intent seq 2 perdido)"
+    "detail": "recuperado: queda antes da escrita; restaurado ultimo estado commitado; gap declarado"
    },
    {
     "test": "T14_caminhos_portaveis",
@@ -95,12 +96,12 @@
    {
     "test": "T15_ancora_corrompida_fail_closed",
     "ok": true,
-    "detail": "{\"error\": \"ancora invalida: Expecting property name enclosed in double quotes: line 1 column 2 (char 1)\"}"
+    "detail": "{\"error\": \"ancora invalida: Expecting property name enclosed in double quotes: line 1 column 2 (char 1)\", \"fail_closed\": true}"
    },
    {
     "test": "T16_seq_nao_monotonico_recusado",
     "ok": true,
-    "detail": "{\"error\": \"seq nao monotonico\", \"seq\": 0, \"expected_seq\": 1}"
+    "detail": "{\"error\": \"seq nao monotonico\", \"fail_closed\": true}"
    },
    {
     "test": "T17_estado_shape_invalido_recusado",
@@ -120,7 +121,7 @@
    {
     "test": "T20_delecao_ancora_rollback_recusado",
     "ok": true,
-    "detail": "ledger invalido: {'error': 'ledger nao vazio sem ancora (delecao da ancora ou ledger legado sem adoc"
+    "detail": "ledger invalido: {'error': 'ledger nao vazio sem ancora', 'fail_closed': True}"
    },
    {
     "test": "T21_role_injection_recusado",
@@ -150,7 +151,7 @@
    {
     "test": "T26_ancora_tmp_abandonada",
     "ok": true,
-    "detail": "{\"entries\": 1, \"head_hash\": \"56bc39fa70433f37e2914dfb912a36568393d5b78836fd62c77ee6dfc7528fb6\", \"anchored\": true}"
+    "detail": "{\"entries\": 1, \"head_hash\": \"7e1cdf24a26d7e39671f0a6e1548a0f9ff6f390a872994e71004973114af88f9\", \"anchored\": true}"
    },
    {
     "test": "T27_payload_nao_ascii",
@@ -165,7 +166,7 @@
    {
     "test": "T29_adocao_ancora_legada",
     "ok": true,
-    "detail": "sem ancora recusado=True adocao=True rollback pos-adocao recusado=True"
+    "detail": "2.0: no implicit adoption; explicit migration covered by T56"
    },
    {
     "test": "T30_ancora_atrasada_pos_queda",
@@ -175,12 +176,12 @@
    {
     "test": "T31_chave_duplicada_recusada",
     "ok": true,
-    "detail": "json invalido na linha 0: chave JSON duplicada: agent"
+    "detail": "linha invalida: chave JSON duplicada: agent"
    },
    {
     "test": "T32_linha_nao_canonica_recusada",
     "ok": true,
-    "detail": "linha 0 nao canonica (raw difere do canonizado; possivel adulteracao textual)"
+    "detail": "linha nao canonica"
    },
    {
     "test": "T33_nan_checkpoint_recusado",
@@ -225,7 +226,7 @@
    {
     "test": "T41_resume_versionado",
     "ok": true,
-    "detail": "esperado v1.4.4"
+    "detail": "esperado v2.0.0"
    },
    {
     "test": "T42_ancora_atrasada_demais_recusada",
@@ -251,6 +252,66 @@
     "test": "T46_tencent_nous_providers",
     "ok": true,
     "detail": "tencent=True nous=True"
+   },
+   {
+    "test": "T47_V1_HMAC",
+    "ok": true,
+    "detail": "forgery/key/anchor/external rollback refused; callback verified"
+   },
+   {
+    "test": "T48_V2_prompt_channels",
+    "ok": true,
+    "detail": "reserved markers/newlines refused; six identical system/user pairs=True"
+   },
+   {
+    "test": "T49_V6_approver",
+    "ok": true,
+    "detail": "required configurable approver and generic envelope"
+   },
+   {
+    "test": "T50_C1_torn_tail",
+    "ok": true,
+    "detail": "partial bytes audited; full prefix unchanged; canonical final entry preserved"
+   },
+   {
+    "test": "T51_C2_latest_checkpoint",
+    "ok": true,
+    "detail": "normal latest=B; mixed old A refused=True"
+   },
+   {
+    "test": "T52_C3_writer_lock",
+    "ok": true,
+    "detail": "2 writers x40; entries=81 errors=[[], []]; timeout=LedgerBusy"
+   },
+   {
+    "test": "T53_C4_incremental",
+    "ok": true,
+    "detail": "{\"exact_ms\": {\"10\": 17.743, \"300\": 14.912, \"900\": 15.07, \"1500\": 17.542}, \"incremental\": true, \"ratio\": 0.8761544560697634, \"total_seconds\": 24.278, \"window_median_ms\": {\"10\": 17.08055000199238, \"1500\": 14.965199996368028}}"
+   },
+   {
+    "test": "T54_C5_directory_fsync",
+    "ok": true,
+    "detail": "3 replacements each followed by directory sync; simulated POSIX open/fsync/close"
+   },
+   {
+    "test": "T55_V5_cipher_hooks",
+    "ok": true,
+    "detail": "ciphertext-only payload/state; roundtrip; missing decrypt/tamper refused (fake hook NOT SECURE)"
+   },
+   {
+    "test": "T56_legacy_migration",
+    "ok": true,
+    "detail": "legacy read-only; new journal records old head/approver; no historical authentication claimed"
+   },
+   {
+    "test": "T57_fail_closed_edges",
+    "ok": true,
+    "detail": "wrong key/hook/prefix refuse without truncation; callback failure reports persisted append; invalid inputs typed"
+   },
+   {
+    "test": "T58_encrypted_phase_recovery",
+    "ok": true,
+    "detail": "interrupted encrypted transaction repaired without plaintext downgrade; read-only restore leaves pending"
    }
   ]
  }

@@ -1,79 +1,34 @@
 # -*- coding: ascii -*-
-"""ACLTD Checkpoint v1.4.4 - snapshot atomico com commit em duas fases.
-
-Correcoes v1.1 (achados adversariais A3/A4):
-- A3: validacao de estado. pinned_fact sem 'source' ou sem 'text' nao
-  vazios e recusado (fail-closed). Fonte deve ser auditavel.
-- A4: protocolo em duas fases no ledger:
-    1) intent  (hash do novo estado)  -> registrado ANTES do arquivo
-    2) escrita atomica do checkpoint.json (tmp + replace)
-    3) commit  (mesmo hash)           -> registrado DEPOIS do arquivo
-  Queda entre quaisquer fases e recuperavel:
-    - arquivo bate com ultimo COMMIT................. restauracao normal
-    - arquivo bate com ultimo INTENT sem commit...... valido (o hash foi
-      registrado no ledger tamper-evident antes da queda); restauracao
-      repara anexando o commit + nota de reparo
-    - arquivo bate com commit ANTERIOR e ha intent
-      posterior sem arquivo........................... queda antes do
-      replace; restaura o estado anterior valido e declara gap
-    - qualquer outro caso............................ recusa (rollback)
-Correcoes v1.2:
-- validate_state cobre shape completo do estado, turnos, listas e provider.
-- restore_checkpoint revalida o estado restaurado antes de aceitar o hash.
-Correcoes v1.3 (achado P4 + fuzzing):
-- roles de last_turns restritos a {user, assistant}: role "system" ou
-  "tool" em transcript checkpointado e canal de prompt injection e passa
-  a ser RECUSADO. LIMITE DECLARADO: injecao via CONTEUDO textual de um
-  turno e inerente a qualquer transcript; mitigada pela moldura do resume
-  (secao rotulada, fatos fixos prevalecem) e pela confirmacao obrigatoria.
-- restore endurecido como funcao total: qualquer entrada malformada
-  retorna dict fail-closed, nunca excecao crua.
-Correcoes v1.4.1 (achado G4):
-- schema do envelope validado contra whitelist; schema desconhecido =
-  recusa fail-closed no restore.
-Correcoes v1.4.2:
-- escrita de texto fixa newline LF para portabilidade Windows/NTFS.
-Correcoes v1.4.3:
-- provedores tencent/nous aceitos explicitamente para o runtime atual do
-  Arconte quando usados como envelope OpenAI-like.
-Correcoes v1.4.4:
-- Saneamento de metadados publicos do pacote, sem mudanca de schema.
-Correcoes v1.4 (achados F3/F5 + JSON estrito):
-- escrita com allow_nan=False: estado com NaN/Infinity ou tipos nao
-  serializaveis vira CheckpointError, nunca grava JSON fora do padrao.
-- leitura do envelope com strict_loads (chaves duplicadas e constantes
-  proibidas recusadas).
-"""
-import json
+"""ACLTD 2.0 authenticated two-phase checkpoints; standard library only."""
 import hashlib
+import json
 import os
 import sys
 import time
+from acltd_ledger import (append_entry, verify_chain, default_anchor_path,
+    ledger_lock, LedgerError, LedgerBusy, strict_loads, _key, _seal,
+    _authenticate, atomic_write, encode_data, decode_data, _read_entries)
 
-from acltd_ledger import (append_entry, verify_chain, last_entries_of_kind,
-                          default_anchor_path, LedgerError, strict_loads)
+RESERVED_MARKERS = ("=== ACLTD", "[FATOS FIXOS", "[GAPS", "[RESUMO",
+                    "[QUESTOES", "[ULTIMOS TURNOS")
+LINE_BREAKS = "\r\n\v\f\x85\u2028\u2029"
+KNOWN_CKPT_SCHEMAS = ("acltd-ckpt-2.0",)
 
 
 class CheckpointError(Exception):
-    """Falha fail-closed do checkpoint."""
+    """Fail-closed checkpoint error."""
+
+
+def _state_body(state):
+    try:
+        return json.dumps(state, sort_keys=True, ensure_ascii=True, indent=1, allow_nan=False)
+    except (ValueError, TypeError, OverflowError, RecursionError) as e:
+        raise CheckpointError("estado nao serializavel: " + str(e)) from None
 
 
 def _sha256_text(text):
     return hashlib.sha256(text.encode("ascii")).hexdigest()
 
-
-def _state_body(state):
-    """Corpo canonico do estado. NaN/Infinity ou tipos nao serializaveis
-    viram CheckpointError fail-closed."""
-    try:
-        return json.dumps(state, sort_keys=True, ensure_ascii=True,
-                          indent=1, allow_nan=False)
-    except (TypeError, ValueError) as e:
-        raise CheckpointError("estado nao serializavel: " + str(e))
-
-
-KNOWN_CKPT_SCHEMAS = ("acltd-ckpt-1.0", "acltd-ckpt-1.1", "acltd-ckpt-1.2",
-                      "acltd-ckpt-1.3", "acltd-ckpt-1.4")
 
 REQUIRED_KEYS = ["mission_id", "pinned_facts", "rolling_summary",
                  "last_turns", "open_questions", "gaps", "provider"]
@@ -138,148 +93,133 @@ def validate_state(state):
         pname = provider.get("name")
         if pname not in ALLOWED_PROVIDERS:
             problems.append("provider.name invalido: " + str(pname))
+    def inspect_text(value):
+        if isinstance(value, str):
+            upper = value.upper()
+            if any(marker in upper for marker in RESERVED_MARKERS):
+                problems.append("marcador ACLTD reservado no texto")
+        elif isinstance(value, dict):
+            for k, v in value.items():
+                inspect_text(k)
+                inspect_text(v)
+        elif isinstance(value, list):
+            for v in value:
+                inspect_text(v)
+    try:
+        _state_body(state)
+        inspect_text(state)
+    except (CheckpointError, RecursionError):
+        problems.append("estado nao serializavel ou recursivo")
+    single_lines = [state.get("mission_id", "")]
+    for fact in pinned_facts:
+        if isinstance(fact, dict):
+            single_lines.extend([fact.get("text", ""), fact.get("source", "")])
+    if isinstance(state.get("gaps"), list):
+        single_lines.extend(state["gaps"])
+    if any(isinstance(v, str) and any(c in v for c in LINE_BREAKS) for v in single_lines):
+        problems.append("missao, fatos fixos, fontes e lacunas devem ter uma linha")
     if problems:
         raise CheckpointError("estado invalido: " + "; ".join(problems))
 
 
-def write_checkpoint(state_dir, state, ledger_path, agent="unknown",
-                     anchor_path=None):
-    """Grava checkpoint com validacao + duas fases (intent/commit)."""
+def write_checkpoint(state_dir, state, ledger_path, agent="unknown", anchor_path=None,
+                     *, key=None, encrypt=None, on_head=None, lock_timeout=10.0):
     validate_state(state)
-    if anchor_path is None:
-        anchor_path = default_anchor_path(ledger_path)
-    os.makedirs(state_dir, exist_ok=True)
-    body = _state_body(state)
-    digest = _sha256_text(body)
-    # fase 1: intent no ledger (tamper-evident) ANTES do arquivo
-    append_entry(ledger_path, "checkpoint_intent",
-                 {"state_sha256": digest}, agent=agent, anchor_path=anchor_path)
-    # fase 2: escrita atomica do arquivo
-    envelope = {
-        "schema": "acltd-ckpt-1.4",
-        "ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-        "state_sha256": digest,
-        "state": state,
-    }
-    final_path = os.path.join(state_dir, "checkpoint.json")
-    tmp_path = final_path + ".tmp"
-    with open(tmp_path, "w", encoding="ascii", newline="\n") as f:
-        f.write(json.dumps(envelope, sort_keys=True, ensure_ascii=True,
-                           indent=1, allow_nan=False))
-        f.flush()
-        os.fsync(f.fileno())
-    os.replace(tmp_path, final_path)
-    # fase 3: commit no ledger
-    append_entry(ledger_path, "checkpoint_commit",
-                 {"state_sha256": digest}, agent=agent, anchor_path=anchor_path)
-    return {"ok": True, "state_sha256": digest, "path": final_path}
+    try:
+        key = _key(key)
+        stored = encode_data(state, encrypt)
+        digest = _sha256_text(_state_body(stored))
+        with ledger_lock(ledger_path, lock_timeout):
+            os.makedirs(state_dir, exist_ok=True)
+            ap = anchor_path or default_anchor_path(ledger_path)
+            opts = dict(key=key, encrypt=encrypt, on_head=on_head, anchor_path=ap, agent=agent)
+            append_entry(ledger_path, "checkpoint_intent", {"state_sha256": digest}, **opts)
+            envelope = _seal({"schema": "acltd-ckpt-2.0",
+                "ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                "state_sha256": digest, "state": stored, "encrypted": encrypt is not None}, key)
+            final_path = os.path.join(state_dir, "checkpoint.json")
+            atomic_write(final_path, _state_body(envelope).encode("ascii"))
+            append_entry(ledger_path, "checkpoint_commit", {"state_sha256": digest}, **opts)
+            return {"ok": True, "state_sha256": digest, "path": final_path,
+                    "external_action_allowed": 0, "requires_approval": True}
+    except LedgerBusy:
+        raise
+    except (LedgerError, OSError, ValueError, TypeError, RecursionError) as e:
+        raise CheckpointError(str(e)) from None
 
 
-def restore_checkpoint(state_dir, ledger_path, anchor_path=None, repair=True):
-    """Restaura com verificacao de cadeia + ancora + reconciliacao de fases."""
-    if anchor_path is None:
-        anchor_path = default_anchor_path(ledger_path)
-    final_path = os.path.join(state_dir, "checkpoint.json")
-    if not os.path.exists(final_path):
-        return {"ok": False, "error": "checkpoint inexistente", "fail_closed": True}
+def restore_checkpoint(state_dir, ledger_path, anchor_path=None, repair=True, *,
+                       key=None, decrypt=None, encrypt=None, on_head=None,
+                       expected_head=None, lock_timeout=10.0):
+    """Full verification under transaction lock. Busy is a distinct exception."""
     try:
-        with open(final_path, "rb") as f:
-            envelope = strict_loads(f.read().decode("ascii"))
-    except (IOError, OSError, ValueError) as e:
-        return {"ok": False, "error": "checkpoint invalido: " + str(e),
-                "fail_closed": True}
-    if not isinstance(envelope, dict) or "state" not in envelope:
-        return {"ok": False, "error": "checkpoint invalido: envelope",
-                "fail_closed": True}
-    if envelope.get("schema") not in KNOWN_CKPT_SCHEMAS:
-        return {"ok": False, "error": "checkpoint com schema desconhecido: "
-                                      + str(envelope.get("schema")),
-                "fail_closed": True}
-    try:
-        validate_state(envelope["state"])
-    except CheckpointError as e:
-        return {"ok": False, "error": str(e), "fail_closed": True}
-    try:
-        body = _state_body(envelope["state"])
-    except CheckpointError as e:
-        return {"ok": False, "error": str(e), "fail_closed": True}
-    file_hash = _sha256_text(body)
-    if file_hash != envelope.get("state_sha256"):
-        return {"ok": False, "error": "checkpoint corrompido (hash interno)",
-                "fail_closed": True}
-    ok, det = verify_chain(ledger_path, anchor_path)
+        key = _key(key)
+        with ledger_lock(ledger_path, lock_timeout):
+            return _restore(state_dir, ledger_path, anchor_path or default_anchor_path(ledger_path),
+                            repair, key, decrypt, encrypt, on_head, expected_head)
+    except LedgerBusy:
+        raise
+    except (LedgerError, CheckpointError, OSError, ValueError, TypeError, RecursionError) as e:
+        return {"ok": False, "error": str(e), "fail_closed": True,
+                "external_action_allowed": 0}
+
+
+def _restore(state_dir, ledger_path, ap, repair, key, decrypt, encrypt, on_head, expected_head):
+    ok, det = verify_chain(ledger_path, ap, key=key, expected_head=expected_head)
     if not ok:
-        return {"ok": False, "error": "ledger invalido: " + str(det),
-                "fail_closed": True}
-    try:
-        intents = last_entries_of_kind(ledger_path, "checkpoint_intent")
-        commits = last_entries_of_kind(ledger_path, "checkpoint_commit")
-        # compat v1.0: entradas antigas kind=checkpoint contam como commit
-        commits += last_entries_of_kind(ledger_path, "checkpoint")
-    except LedgerError as e:
-        return {"ok": False, "error": "ledger invalido: " + str(e),
-                "fail_closed": True}
-    for group in (intents, commits):
-        for e in group:
-            pl = e.get("payload")
-            if not (isinstance(pl, dict) and
-                    isinstance(pl.get("state_sha256"), str)):
-                return {"ok": False,
-                        "error": "entrada de checkpoint malformada no ledger",
-                        "fail_closed": True}
-    commits.sort(key=lambda e: e["seq"])
-    last_intent = intents[-1]["payload"]["state_sha256"] if intents else None
-    last_intent_seq = intents[-1]["seq"] if intents else -1
-    last_commit = commits[-1]["payload"]["state_sha256"] if commits else None
-    last_commit_seq = commits[-1]["seq"] if commits else -1
-    committed_hashes = [c["payload"]["state_sha256"] for c in commits]
-
+        raise CheckpointError("ledger invalido: " + str(det))
+    with open(os.path.join(state_dir, "checkpoint.json"), "rb") as f:
+        envelope = strict_loads(f.read().decode("ascii"))
+    if not isinstance(envelope, dict) or envelope.get("schema") not in KNOWN_CKPT_SCHEMAS:
+        raise CheckpointError("checkpoint com schema desconhecido")
+    _authenticate(envelope, key, "checkpoint")
+    if type(envelope.get("encrypted")) is not bool:
+        raise CheckpointError("checkpoint encrypted invalido")
+    stored = envelope.get("state")
+    file_hash = _sha256_text(_state_body(stored))
+    if file_hash != envelope.get("state_sha256"):
+        raise CheckpointError("checkpoint corrompido (hash interno)")
+    state = decode_data(stored, envelope["encrypted"], decrypt)
+    validate_state(state)
+    intents, commits = [], []
+    for obj in _read_entries(ledger_path):
+        if obj["kind"] in ("checkpoint_intent", "checkpoint_commit"):
+            payload = decode_data(obj["payload"], obj["encrypted"], decrypt)
+            if not isinstance(payload, dict) or not isinstance(payload.get("state_sha256"), str):
+                raise CheckpointError("entrada de checkpoint malformada no ledger")
+            (intents if obj["kind"] == "checkpoint_intent" else commits).append(
+                (obj["seq"], payload["state_sha256"]))
+    last_intent_seq, last_intent = intents[-1] if intents else (-1, None)
+    last_commit_seq, last_commit = commits[-1] if commits else (-1, None)
+    pending = last_intent_seq > last_commit_seq
     note = None
     if last_commit is not None and file_hash == last_commit:
-        # caso normal; mas se ha intent MAIS NOVO sem arquivo correspondente,
-        # um checkpoint pretendido foi perdido antes da escrita -> declarar gap
-        if (last_intent is not None and last_intent_seq > last_commit_seq
-                and last_intent != last_commit):
-            note = ("recuperado: queda antes da escrita do novo checkpoint; "
-                    "restaurado ultimo estado commitado; gap declarado "
-                    "(intent seq %d perdido)" % last_intent_seq)
-    elif last_intent is not None and file_hash == last_intent:
-        # queda entre fase 2 e 3: arquivo valido, commit ausente -> reparo
-        note = "recuperado: queda entre checkpoint e commit; commit reparado"
+        if pending and last_intent != last_commit:
+            note = "recuperado: queda antes da escrita; restaurado ultimo estado commitado; gap declarado"
+    elif pending and file_hash == last_intent:
+        note = "recuperado: queda entre checkpoint e commit"
         if repair:
-            try:
-                append_entry(ledger_path, "checkpoint_commit",
-                             {"state_sha256": file_hash, "repair": 1},
-                             agent="acltd_restore", anchor_path=anchor_path)
-            except LedgerError as e:
-                return {"ok": False, "error": "reparo falhou: " + str(e),
-                        "fail_closed": True}
-    elif (last_intent is not None and last_commit is not None
-          and file_hash == last_commit and last_intent != last_commit):
-        note = "recuperado: intent sem arquivo; estado anterior valido"
-    elif (last_intent is not None and file_hash in committed_hashes
-          and last_intent not in committed_hashes):
-        # queda entre fase 1 e 2: arquivo ainda e um commit anterior valido
-        note = ("recuperado: queda antes da escrita do novo checkpoint; "
-                "restaurado ultimo estado commitado; gap declarado")
+            # Do not silently downgrade encrypted storage when repairing a phase.
+            if envelope["encrypted"] and encrypt is None:
+                raise CheckpointError("encrypt obrigatorio para reparar checkpoint cifrado")
+            append_entry(ledger_path, "checkpoint_commit", {"state_sha256": file_hash, "repair": 1},
+                         agent="acltd_restore", anchor_path=ap, key=key,
+                         encrypt=encrypt, on_head=on_head)
+            note += "; commit reparado"
+        else:
+            note += "; commit pendente (repair=False)"
+    elif any(digest == file_hash for _, digest in commits):
+        raise CheckpointError("checkpoint mais antigo que o \u00faltimo confirmado (poss\u00edvel backup misturado)")
     else:
-        return {"ok": False,
-                "error": "checkpoint nao corresponde a intent/commit do ledger "
-                         "(possivel rollback)",
-                "fail_closed": True}
-    out = {"ok": True, "state": envelope["state"], "state_sha256": file_hash}
+        raise CheckpointError("checkpoint nao corresponde ao ultimo intent/commit (possivel rollback)")
+    out = {"ok": True, "state": state, "state_sha256": file_hash,
+           "external_action_allowed": 0, "requires_approval": True}
     if note:
         out["recovery_note"] = note
     return out
 
 
 if __name__ == "__main__":
-    if len(sys.argv) >= 4 and sys.argv[1] == "restore":
-        ap = sys.argv[4] if len(sys.argv) > 4 else None
-        out = restore_checkpoint(sys.argv[2], sys.argv[3], ap)
-        print(json.dumps({"ok": out.get("ok", False), "source": "acltd_checkpoint",
-                          "external_action_allowed": False,
-                          "requires_favini": False, "data": out}))
-        sys.exit(0 if out.get("ok") else 1)
-    print("uso: python acltd_checkpoint.py restore <state_dir> <ledger> [ancora]")
+    print(json.dumps({"ok": False, "external_action_allowed": 0,
+                      "error": "use API com chave bytes/funcao; CLI nao recebe segredos"}))
     sys.exit(2)

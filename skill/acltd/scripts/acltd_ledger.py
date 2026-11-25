@@ -1,334 +1,495 @@
 # -*- coding: ascii -*-
-"""ACLTD Ledger v1.4.4 - append-only JSONL com cadeia SHA-256 e ancora monotonica.
-
-Correcoes v1.1 (achados adversariais A1/A2):
-- A1: append verifica a cadeia INTEIRA antes de anexar (fail-closed).
-- A2: ancora monotonica (seq, hash) em arquivo separado, atualizada
-  atomicamente a cada append. Truncamento/rollback do ledger abaixo da
-  ancora e detectado. LIMITE DECLARADO: rollback coordenado de ledger +
-  checkpoint + ancora permanece indetectavel localmente; a ancora deve
-  residir em volume distinto e o head_hash deve ser registrado
-  externamente (relatorio a Favini) em marcos importantes.
-Correcoes v1.2:
-- ancora corrompida falha fechado sem excecao crua.
-- seq deve ser inteiro monotonicamente crescente (0..n); ledger
-  hash-coerente mas estruturalmente impossivel e recusado.
-Correcoes v1.3 (achados P1 + fuzzing):
-- ANCORA OBRIGATORIA: ledger nao vazio sem ancora e recusado (delecao da
-  ancora deixa de burlar a deteccao de rollback). Ledgers legados exigem
-  adocao explicita via adopt_anchor (ordem de Favini), nunca implicita.
-- leitura endurecida: bytes nao-ASCII ou I/O invalido no ledger viram
-  LedgerError fail-closed, nunca excecao crua.
-Correcoes v1.4.1 (achados G1-G5, fechamento byte-exato):
-- ARQUIVO byte-exato: nada de strip; linha em branco, espaco no inicio ou
-  no fim, ou ausencia de newline final = recusa. O arquivo inteiro deve
-  ser exatamente a concatenacao de linhas canonicas + newline.
-- Whitelist de schema em entradas do ledger e na ancora; schema
-  desconhecido = recusa fail-closed.
-Correcoes v1.4.2:
-- Ancora pode ficar no maximo 1 seq atras da cabeca. Atraso maior nao e
-  estado produzido por queda legitima entre append e escrita da ancora.
-- Escrita de texto fixa newline LF para portabilidade Windows/NTFS.
-- kind e payload seguem contrato: kind em whitelist; payload deve ser objeto.
-Correcoes v1.4.3:
-- Smoke test portavel em Windows/Git Bash e provedores tencent/nous
-  explicitamente reconhecidos pelo pacote de contexto.
-Correcoes v1.4.4:
-- Saneamento de metadados publicos do pacote, sem mudanca de schema.
-Correcoes v1.4 (achados F1-F5, correcao DE CLASSE):
-- DISCIPLINA DE LINHA CANONICA: cada linha do ledger deve ser IDENTICA,
-  byte a byte, a canonizacao do objeto que ela declara. Isso fecha de uma
-  vez a classe inteira raw-vs-parseado: chaves duplicadas, formatacao
-  alternativa, conteudo bruto oculto e qualquer normalizacao do parser.
-- JSON ESTRITO em toda leitura: chaves duplicadas recusadas
-  (object_pairs_hook), constantes NaN/Infinity recusadas (parse_constant).
-- JSON ESTRITO em toda escrita: allow_nan=False; payload nao serializavel
-  ou com valores nao finitos vira LedgerError, nunca TypeError cru.
-
-Invariantes: external_action_allowed=0; append-only; ASCII-safe (PS 5.1).
-"""
-import json
+"""ACLTD 2.0 authenticated append-only ledger. Standard library only."""
+import base64
+from contextlib import contextmanager
 import hashlib
+import hmac
+import json
 import os
 import sys
+import threading
 import time
+from acltd_legacy import strict_loads, verify_legacy
 
+ACLTD_VERSION = "2.0.0"
+SCHEMA_VERSION = "acltd-2.0"
 GENESIS_HASH = "0" * 64
-KNOWN_ENTRY_SCHEMAS = ("acltd-1.0", "acltd-1.1", "acltd-1.2",
-                       "acltd-1.3", "acltd-1.4")
-KNOWN_ANCHOR_SCHEMAS = ("acltd-anchor-1.1", "acltd-anchor-1.3",
-                        "acltd-anchor-1.4")
-SCHEMA_VERSION = "acltd-1.4"
-ACLTD_VERSION = "1.4.4"
-MAX_ANCHOR_LAG = 1
-KNOWN_KINDS = ("turn", "fact", "decision", "gap", "note",
-               "checkpoint_intent", "checkpoint_commit", "checkpoint")
+KNOWN_ENTRY_SCHEMAS = (SCHEMA_VERSION,)
+KNOWN_KINDS = ("turn", "fact", "decision", "gap", "note", "checkpoint_intent",
+               "checkpoint_commit", "repair", "migration")
+TORN_TAIL = "linha final incompleta: use repair_torn_tail com aprova\u00e7\u00e3o"
+_locks = {}
+_guard = threading.Lock()
+_local = threading.local()
+_verified = {}
 
 
 class LedgerError(Exception):
-    """Falha fail-closed do ledger."""
+    """Fail-closed storage/authentication error."""
+
+
+class LedgerBusy(LedgerError):
+    """Ledger ocupado; retryable contention, not corruption."""
 
 
 def _canon(obj):
-    """Serializacao canonica estrita. NaN/Infinity e tipos nao
-    serializaveis viram LedgerError fail-closed."""
     try:
         return json.dumps(obj, sort_keys=True, separators=(",", ":"),
                           ensure_ascii=True, allow_nan=False)
-    except (TypeError, ValueError) as e:
-        raise LedgerError("objeto nao canonizavel: " + str(e))
+    except (TypeError, ValueError, OverflowError, RecursionError) as e:
+        raise LedgerError("objeto nao canonizavel: " + str(e)) from None
 
 
-def _reject_dup_pairs(pairs):
-    seen = {}
-    for k, v in pairs:
-        if k in seen:
-            raise ValueError("chave JSON duplicada: " + str(k))
-        seen[k] = v
-    return seen
+def _key(key):
+    try:
+        value = key() if callable(key) else key
+    except Exception:
+        raise LedgerError("fornecedor de chave falhou") from None
+    if not isinstance(value, bytes) or not value:
+        raise LedgerError("chave bytes nao vazia obrigatoria")
+    return value
 
 
-def _reject_constant(name):
-    raise ValueError("constante JSON proibida: " + str(name))
+def _mac(obj, key):
+    return hmac.new(_key(key), _canon(obj).encode("ascii"), hashlib.sha256).hexdigest()
 
 
-def strict_loads(text):
-    """json.loads estrito: recusa chaves duplicadas e NaN/Infinity."""
-    return json.loads(text, object_pairs_hook=_reject_dup_pairs,
-                      parse_constant=_reject_constant)
+def _entry_hash(obj):
+    return hashlib.sha256(_canon(obj).encode("ascii")).hexdigest()
 
 
-def _entry_hash(entry_without_hash):
-    return hashlib.sha256(_canon(entry_without_hash).encode("ascii")).hexdigest()
+def _authenticate(obj, key, label):
+    work = dict(obj)
+    claimed = work.pop("mac", None)
+    if not isinstance(claimed, str) or not hmac.compare_digest(claimed, _mac(work, key)):
+        raise LedgerError(label + ": MAC invalido")
 
 
-def _validate_entry_contract(obj, line_index=None):
-    prefix = "entrada" if line_index is None else "linha %d" % line_index
-    kind = obj.get("kind")
-    if kind not in KNOWN_KINDS:
-        raise LedgerError(prefix + " com kind desconhecido: " + str(kind))
-    if not isinstance(obj.get("payload"), dict):
-        raise LedgerError(prefix + " com payload nao-objeto")
+def _seal(obj, key):
+    obj["mac"] = _mac(obj, key)
+    return obj
+
+
+def encode_data(value, encrypt=None):
+    raw = _canon(value).encode("ascii")
+    if encrypt is None:
+        return value
+    try:
+        encoded = encrypt(raw)
+        if not isinstance(encoded, bytes):
+            raise ValueError()
+        return base64.b64encode(encoded).decode("ascii")
+    except Exception:
+        raise LedgerError("gancho encrypt falhou (bytes obrigatorios)") from None
+
+
+def decode_data(value, encrypted, decrypt=None):
+    if not encrypted:
+        return value
+    if decrypt is None:
+        raise LedgerError("decrypt obrigatorio para dados cifrados")
+    try:
+        raw = decrypt(base64.b64decode(value, validate=True))
+        if not isinstance(raw, bytes):
+            raise ValueError()
+        return strict_loads(raw.decode("ascii"))
+    except Exception:
+        raise LedgerError("gancho decrypt ou dados cifrados invalidos") from None
 
 
 def default_anchor_path(ledger_path):
-    return ledger_path + ".anchor"
+    return os.fspath(ledger_path) + ".anchor"
+
+
+@contextmanager
+def ledger_lock(ledger_path, timeout=10.0):
+    """Reentrant per thread, exclusive across OS processes. Never unlink lock."""
+    try:
+        if isinstance(timeout, bool) or not isinstance(timeout, (float, int)) or not 0 <= timeout < float("inf"):
+            raise LedgerError("lock_timeout invalido")
+        name = os.path.normcase(os.path.realpath(ledger_path))
+        with _guard:
+            mutex = _locks.setdefault(name, threading.RLock())
+        deadline = time.monotonic() + timeout
+        if not mutex.acquire(timeout=timeout):
+            raise LedgerBusy("ledger ocupado")
+        try:
+            held = getattr(_local, "held", {})
+            if name in held:
+                yield
+                return
+            os.makedirs(os.path.dirname(name), exist_ok=True)
+            with open(name + ".lock", "a+b") as handle:
+                # Windows permits locking beyond EOF; no racing byte writes.
+                while True:
+                    try:
+                        if os.name == "nt":
+                            import msvcrt
+                            handle.seek(0)
+                            msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
+                        else:
+                            import fcntl
+                            fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                        break
+                    except (OSError, IOError):
+                        if time.monotonic() >= deadline:
+                            raise LedgerBusy("ledger ocupado") from None
+                        time.sleep(min(0.01, max(0, deadline - time.monotonic())))
+                held[name] = True
+                _local.held = held
+                try:
+                    yield
+                finally:
+                    del held[name]
+                    if os.name == "nt":
+                        handle.seek(0)
+                        msvcrt.locking(handle.fileno(), msvcrt.LK_UNLCK, 1)
+                    else:
+                        fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+        finally:
+            mutex.release()
+    except (OSError, ValueError, TypeError) as e:
+        raise LedgerError("I/O lock: " + str(e)) from None
+
+
+def fsync_directory(path):
+    """POSIX rename durability. Windows has no stdlib directory flush."""
+    if os.name != "nt":
+        fd = os.open(os.path.dirname(os.path.abspath(path)), os.O_RDONLY | os.O_DIRECTORY)
+        try:
+            os.fsync(fd)
+        finally:
+            os.close(fd)
+
+
+def atomic_write(path, raw):
+    # Caller owns the ledger lock for anchor AND checkpoint replacement.
+    tmp = os.fspath(path) + ".tmp"
+    with open(tmp, "wb") as f:
+        f.write(raw)
+        f.flush()
+        os.fsync(f.fileno())
+    os.replace(tmp, path)
+    fsync_directory(path)
+
+
+def _write_anchor(anchor_path, seq, head_hash, key=None, offset=0, end=0):
+    anchor = _seal({"schema": "acltd-anchor-2.0", "seq": seq, "hash": head_hash,
+                    "offset": offset, "end": end}, key)
+    atomic_write(anchor_path, _canon(anchor).encode("ascii"))
+
+
+def _read_anchor(path, key):
+    if not os.path.exists(path):
+        return None
+    try:
+        with open(path, "rb") as f:
+            raw = f.read()
+        a = strict_loads(raw.decode("ascii"))
+        if not isinstance(a, dict) or a.get("schema") != "acltd-anchor-2.0":
+            raise LedgerError("ancora com schema desconhecido")
+        _authenticate(a, key, "ancora")
+        if (type(a.get("seq")) is not int or a["seq"] < 0
+                or type(a.get("offset")) is not int or type(a.get("end")) is not int
+                or not 0 <= a["offset"] < a["end"] or not isinstance(a.get("hash"), str)):
+            raise LedgerError("ancora invalida: campos seq/hash/offset/end")
+        if raw != _canon(a).encode("ascii"):
+            raise LedgerError("ancora nao canonica")
+        return a
+    except (OSError, ValueError, TypeError, RecursionError) as e:
+        raise LedgerError("ancora invalida: " + str(e)) from None
+
+
+def _parse_line(raw):
+    try:
+        text = raw.decode("ascii")
+        obj = strict_loads(text)
+        if not isinstance(obj, dict) or text != _canon(obj):
+            raise LedgerError("linha nao canonica")
+        if obj.get("schema") != SCHEMA_VERSION:
+            raise LedgerError("schema desconhecido; legado somente verify_legacy")
+        if obj.get("kind") not in KNOWN_KINDS:
+            raise LedgerError("kind desconhecido")
+        if type(obj.get("encrypted")) is not bool:
+            raise LedgerError("flag encrypted invalida")
+        if not isinstance(obj.get("payload"), str if obj["encrypted"] else dict):
+            raise LedgerError("payload invalido")
+        if obj["encrypted"]:
+            base64.b64decode(obj["payload"], validate=True)
+        return obj
+    except (ValueError, TypeError, RecursionError) as e:
+        raise LedgerError("linha invalida: " + str(e)) from None
 
 
 def _read_entries(ledger_path):
-    entries = []
-    if not os.path.exists(ledger_path):
-        return entries
     try:
+        if not os.path.exists(ledger_path):
+            return []
         with open(ledger_path, "rb") as f:
             raw = f.read()
-    except (IOError, OSError) as e:
-        raise LedgerError("leitura do ledger falhou: " + str(e))
-    try:
-        text = raw.decode("ascii")
-    except UnicodeDecodeError as e:
-        raise LedgerError("ledger contem bytes nao-ASCII: " + str(e))
-    if text == "":
-        return entries
-    if not text.endswith("\n"):
-        raise LedgerError("ledger sem newline final (formato nao canonico)")
-    for i, line in enumerate(text[:-1].split("\n")):
-        if line == "":
-            raise LedgerError("linha %d em branco (formato nao canonico)" % i)
-        if line != line.strip():
-            raise LedgerError("linha %d com espacos nas bordas "
-                              "(formato nao canonico)" % i)
-        try:
-            obj = strict_loads(line)
-        except ValueError as e:
-            raise LedgerError("json invalido na linha %d: %s" % (i, e))
-        if not isinstance(obj, dict):
-            raise LedgerError("linha %d nao e objeto" % i)
-        if line != _canon(obj):
-            raise LedgerError("linha %d nao canonica (raw difere do "
-                              "canonizado; possivel adulteracao textual)" % i)
-        if obj.get("schema") not in KNOWN_ENTRY_SCHEMAS:
-            raise LedgerError("linha %d com schema desconhecido: %s"
-                              % (i, obj.get("schema")))
-        _validate_entry_contract(obj, i)
-        entries.append(obj)
-    return entries
+        if raw and not raw.endswith(b"\n"):
+            raise LedgerError(TORN_TAIL)
+        return [_parse_line(line) for line in raw.split(b"\n")[:-1]]
+    except OSError as e:
+        raise LedgerError("leitura do ledger falhou: " + str(e)) from None
 
 
-def _write_anchor(anchor_path, seq, head_hash):
-    tmp = anchor_path + ".tmp"
-    with open(tmp, "w", encoding="ascii", newline="\n") as f:
-        json.dump({"schema": "acltd-anchor-1.4", "seq": seq, "hash": head_hash},
-                  f, sort_keys=True)
-        f.flush()
-        os.fsync(f.fileno())
-    os.replace(tmp, anchor_path)
+def _check_entry(obj, seq, prev, key):
+    if type(obj.get("seq")) is not int or obj["seq"] != seq:
+        raise LedgerError("seq nao monotonico")
+    if obj.get("prev_hash") != prev:
+        raise LedgerError("quebra de cadeia prev_hash")
+    if type(obj.get("external_action_allowed")) is not int or obj["external_action_allowed"] != 0:
+        raise LedgerError("invariante fail-closed violada")
+    work = dict(obj)
+    claimed = work.pop("hash", None)
+    if claimed != _entry_hash(work):
+        raise LedgerError("hash adulterado")
+    _authenticate(work, key, "entrada")
 
 
-def _read_anchor(anchor_path):
-    if not os.path.exists(anchor_path):
-        return None
-    try:
-        with open(anchor_path, "rb") as f:
-            raw = f.read()
-        anchor = strict_loads(raw.decode("ascii"))
-    except (IOError, OSError, ValueError) as e:
-        raise LedgerError("ancora invalida: " + str(e))
-    if not isinstance(anchor, dict):
-        raise LedgerError("ancora invalida: nao e objeto")
-    return anchor
-
-
-def verify_chain(ledger_path, anchor_path=None, require_anchor=True):
-    """Verifica cadeia e coerencia com a ancora. Retorna (ok, detalhes).
-    require_anchor=True (padrao): ledger NAO VAZIO sem ancora e recusado
-    (P1: delecao da ancora nao burla a deteccao de rollback). Ledgers
-    legados exigem adocao explicita via adopt_anchor."""
-    if anchor_path is None:
-        anchor_path = default_anchor_path(ledger_path)
-    try:
-        entries = _read_entries(ledger_path)
-    except LedgerError as e:
-        return False, {"error": str(e)}
-    prev_hash = GENESIS_HASH
-    hash_by_seq = {}
-    for expected_seq, obj in enumerate(entries):
-        if not isinstance(obj, dict):
-            return False, {"error": "entrada nao e objeto", "seq": expected_seq}
-        work = dict(obj)
-        claimed = work.pop("hash", None)
-        if claimed is None:
-            return False, {"error": "entrada sem hash", "seq": work.get("seq")}
-        seq = work.get("seq")
-        if type(seq) is not int or seq != expected_seq:
-            return False, {"error": "seq nao monotonico",
-                           "seq": seq, "expected_seq": expected_seq}
-        if work.get("prev_hash") != prev_hash:
-            return False, {"error": "quebra de cadeia (prev_hash)", "seq": work.get("seq")}
-        if _entry_hash(work) != claimed:
-            return False, {"error": "hash adulterado", "seq": work.get("seq")}
-        if work.get("external_action_allowed") != 0:
-            return False, {"error": "invariante fail-closed violada", "seq": work.get("seq")}
-        hash_by_seq[work.get("seq")] = claimed
-        prev_hash = claimed
-    try:
-        anchor = _read_anchor(anchor_path)
-    except LedgerError as e:
-        return False, {"error": str(e)}
-    if anchor is None and entries and require_anchor:
-        return False, {"error": "ledger nao vazio sem ancora "
-                                "(delecao da ancora ou ledger legado sem adocao)",
-                       "entries": len(entries)}
-    if anchor is not None:
-        aseq = anchor.get("seq")
-        ahash = anchor.get("hash")
-        if anchor.get("schema") not in KNOWN_ANCHOR_SCHEMAS:
-            return False, {"error": "ancora com schema desconhecido: "
-                                    + str(anchor.get("schema"))}
-        if type(aseq) is not int or not (isinstance(ahash, str) and ahash):
-            return False, {"error": "ancora invalida: campos seq/hash"}
-        if aseq not in hash_by_seq:
-            return False, {"error": "ledger truncado abaixo da ancora (rollback)",
-                           "anchor_seq": aseq, "entries": len(entries)}
-        if hash_by_seq[aseq] != ahash:
-            return False, {"error": "ledger divergente da ancora (rollback ou tamper)",
-                           "anchor_seq": aseq}
-        head_seq = len(entries) - 1
-        if head_seq - aseq > MAX_ANCHOR_LAG:
-            return False, {"error": "ancora atrasada demais",
-                           "anchor_seq": aseq, "head_seq": head_seq,
-                           "max_lag": MAX_ANCHOR_LAG}
-    return True, {"entries": len(entries), "head_hash": prev_hash,
-                  "anchored": anchor is not None}
-
-
-def append_entry(ledger_path, kind, payload, agent="unknown", anchor_path=None):
-    """Anexa entrada. Fail-closed: recusa se a cadeia ou a ancora estiverem
-    invalidas (LedgerError). Atualiza a ancora atomicamente apos o append."""
-    if anchor_path is None:
-        anchor_path = default_anchor_path(ledger_path)
-    if kind not in KNOWN_KINDS:
-        raise LedgerError("append recusado: kind desconhecido: " + str(kind))
-    if not isinstance(payload, dict):
-        raise LedgerError("append recusado: payload deve ser objeto")
-    ok, det = verify_chain(ledger_path, anchor_path)
-    if not ok:
-        raise LedgerError("append recusado, ledger invalido: " + str(det))
-    entries = _read_entries(ledger_path)
-    if entries:
-        prev_hash = entries[-1]["hash"]
-        seq = entries[-1]["seq"] + 1
+def _head_matches(expected, seq, digest):
+    if expected is None:
+        return
+    if isinstance(expected, dict):
+        match = expected == {"seq": seq, "head_hash": digest}
     else:
-        prev_hash = GENESIS_HASH
-        seq = 0
-    entry = {
-        "schema": SCHEMA_VERSION,
-        "seq": seq,
-        "ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-        "agent": agent,
-        "kind": kind,
-        "payload": payload,
-        "external_action_allowed": 0,
-        "prev_hash": prev_hash,
-    }
-    entry["hash"] = _entry_hash(entry)
-    with open(ledger_path, "a", encoding="ascii", newline="\n") as f:
-        f.write(_canon(entry) + "\n")
-        f.flush()
-        os.fsync(f.fileno())
-    _write_anchor(anchor_path, seq, entry["hash"])
-    return entry
+        match = isinstance(expected, (tuple, list)) and list(expected) == [seq, digest]
+    if not match:
+        raise LedgerError("cabeca externa divergente (expected_head)")
 
 
-def adopt_anchor(ledger_path, anchor_path=None):
-    """Adocao EXPLICITA de ancora para ledger legado (pre-v1.1) sem ancora.
-    So deve ser executada sob ordem de Favini, apos auditoria da cadeia.
-    Fail-closed: recusa se a cadeia for invalida ou se ja houver ancora
-    divergente. Idempotente se a ancora atual ja apontar para a cabeca."""
-    if anchor_path is None:
-        anchor_path = default_anchor_path(ledger_path)
-    ok, det = verify_chain(ledger_path, anchor_path, require_anchor=False)
-    if not ok:
-        raise LedgerError("adocao recusada, cadeia invalida: " + str(det))
+def _verify(ledger_path, anchor_path, key, expected_head=None):
     entries = _read_entries(ledger_path)
-    if not entries:
-        raise LedgerError("adocao recusada: ledger vazio, nada a ancorar")
-    head = entries[-1]
-    existing = _read_anchor(anchor_path)
-    if existing is not None:
-        if existing.get("seq") == head["seq"] and existing.get("hash") == head["hash"]:
-            return {"ok": True, "adopted": False, "seq": head["seq"],
-                    "note": "ancora ja presente e coerente"}
-        raise LedgerError("adocao recusada: ancora existente divergente")
-    _write_anchor(anchor_path, head["seq"], head["hash"])
-    return {"ok": True, "adopted": True, "seq": head["seq"], "hash": head["hash"]}
+    prev = GENESIS_HASH
+    offsets = []
+    offset = 0
+    for seq, obj in enumerate(entries):
+        _check_entry(obj, seq, prev, key)
+        end = offset + len(_canon(obj)) + 1
+        offsets.append((offset, end))
+        offset = end
+        prev = obj["hash"]
+    a = _read_anchor(anchor_path, key)
+    if entries and a is None:
+        raise LedgerError("ledger nao vazio sem ancora")
+    if a is not None:
+        seq = a["seq"]
+        if seq >= len(entries):
+            raise LedgerError("ledger truncado abaixo da ancora (rollback)")
+        if (a["hash"] != entries[seq]["hash"]
+                or (a["offset"], a["end"]) != offsets[seq]):
+            raise LedgerError("ledger divergente da ancora")
+        if len(entries) - 1 - seq > 1:
+            raise LedgerError("ancora atrasada demais")
+    _head_matches(expected_head, len(entries) - 1, prev)
+    return {"entries": len(entries), "head_hash": prev, "anchored": a is not None}
 
 
-def last_entries_of_kind(ledger_path, kind):
-    """Retorna todas as entradas do tipo, em ordem."""
-    return [e for e in _read_entries(ledger_path) if e.get("kind") == kind]
+def verify_chain(ledger_path, anchor_path=None, *, key=None, expected_head=None,
+                 lock_timeout=10.0):
+    """Full verification mandatory at mission open and restore. Busy raises."""
+    try:
+        key = _key(key)
+        with ledger_lock(ledger_path, lock_timeout):
+            det = _verify(ledger_path, anchor_path or default_anchor_path(ledger_path), key, expected_head)
+            return True, det
+    except LedgerBusy:
+        raise
+    except (LedgerError, OSError, ValueError, TypeError, RecursionError) as e:
+        return False, {"error": str(e), "fail_closed": True}
+
+
+def _fingerprint(path):
+    if not os.path.exists(path):
+        return None
+    s = os.stat(path)
+    return (s.st_dev, s.st_ino, s.st_size, s.st_mtime_ns, s.st_ctime_ns)
+
+
+def _tail_head(lp, ap, key):
+    """Only authenticated anchor's head and at most one unanchored entry."""
+    a = _read_anchor(ap, key)
+    size = os.path.getsize(lp) if os.path.exists(lp) else 0
+    if a is None:
+        if size:
+            raise LedgerError("ledger nao vazio sem ancora")
+        return -1, GENESIS_HASH
+    if size < a["end"]:
+        raise LedgerError("ledger truncado abaixo da ancora")
+    with open(lp, "rb") as f:
+        f.seek(a["offset"])
+        raw = f.read(a["end"] - a["offset"])
+        if not raw.endswith(b"\n"):
+            raise LedgerError(TORN_TAIL)
+        obj = _parse_line(raw[:-1])
+        _check_entry(obj, a["seq"], obj.get("prev_hash"), key)
+        if obj["hash"] != a["hash"]:
+            raise LedgerError("ledger divergente da ancora")
+        tail = f.read()
+    if tail:
+        if not tail.endswith(b"\n"):
+            raise LedgerError(TORN_TAIL)
+        if tail.count(b"\n") != 1:
+            raise LedgerError("ancora atrasada demais")
+        next_obj = _parse_line(tail[:-1])
+        _check_entry(next_obj, obj["seq"] + 1, obj["hash"], key)
+        obj = next_obj
+    return obj["seq"], obj["hash"]
+
+
+def append_entry(ledger_path, kind, payload, agent="unknown", anchor_path=None,
+                 *, key=None, on_head=None, encrypt=None, lock_timeout=10.0):
+    key = _key(key)
+    if kind not in KNOWN_KINDS or not isinstance(payload, dict) or not isinstance(agent, str):
+        raise LedgerError("kind/payload/agent invalido")
+    if on_head is not None and not callable(on_head):
+        raise LedgerError("on_head deve ser funcao")
+    encoded = encode_data(payload, encrypt)
+    try:
+        lp = os.fspath(ledger_path)
+        ap = anchor_path or default_anchor_path(lp)
+        with ledger_lock(lp, lock_timeout):
+            identity = (os.path.realpath(lp), os.path.realpath(ap), hashlib.sha256(key).digest())
+            fingerprint = (_fingerprint(lp), _fingerprint(ap))
+            # Full on opening in each process and on unexpected external changes.
+            # Normal own appends authenticate only the anchor and tail.
+            if identity not in _verified or _verified[identity] != fingerprint:
+                _verify(lp, ap, key)
+            seq, prev = _tail_head(lp, ap, key)
+            obj = _seal({"schema": SCHEMA_VERSION, "seq": seq + 1,
+                         "ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                         "agent": agent, "kind": kind, "payload": encoded,
+                         "encrypted": encrypt is not None,
+                         "external_action_allowed": 0, "prev_hash": prev}, key)
+            obj["hash"] = _entry_hash(obj)
+            offset = os.path.getsize(lp) if os.path.exists(lp) else 0
+            with open(ledger_path, "a", encoding="ascii", newline="\n") as f:
+                f.write(_canon(obj) + "\n")
+                f.flush()
+                os.fsync(f.fileno())
+            if offset == 0:
+                fsync_directory(lp)
+            _write_anchor(ap, obj["seq"], obj["hash"], key, offset, offset + len(_canon(obj)) + 1)
+            _verified[identity] = (_fingerprint(lp), _fingerprint(ap))
+            if on_head:
+                try:
+                    on_head(obj["seq"], obj["hash"])
+                except Exception:
+                    raise LedgerError("on_head falhou; append local ja persistido; reconciliar cabeca externa") from None
+            return obj
+    except (OSError, ValueError, TypeError, RecursionError) as e:
+        raise LedgerError("append I/O/estrutura falhou; verificar estado persistido: " + str(e)) from None
+
+
+def last_entries_of_kind(ledger_path, kind, *, key=None, decrypt=None, anchor_path=None):
+    with ledger_lock(ledger_path):
+        ok, det = verify_chain(ledger_path, anchor_path, key=key)
+        if not ok:
+            raise LedgerError(str(det))
+        result = []
+        for obj in _read_entries(ledger_path):
+            if obj["kind"] == kind:
+                obj["payload"] = decode_data(obj["payload"], obj["encrypted"], decrypt)
+                result.append(obj)
+        return result
+
+
+def approval_text(value, field="approver"):
+    if not isinstance(value, str) or not value.strip() or any(c in value for c in "\r\n\v\f\x85\u2028\u2029"):
+        raise LedgerError(field + " obrigatorio, texto de uma linha")
+    return value
+
+
+def repair_torn_tail(ledger_path, key, approver, reason, *, anchor_path=None,
+                     encrypt=None, on_head=None, lock_timeout=10.0):
+    key = _key(key)
+    approval_text(approver)
+    approval_text(reason, "reason")
+    try:
+        ap = anchor_path or default_anchor_path(ledger_path)
+        with ledger_lock(ledger_path, lock_timeout):
+            with open(ledger_path, "rb") as f:
+                raw = f.read()
+            cut = raw.rfind(b"\n") + 1
+            tail = raw[cut:]
+            if not tail:
+                raise LedgerError("sem linha final incompleta")
+            try:
+                # Complete canonical JSON missing ONLY LF must never be cut,
+                # even if its schema/MAC is wrong. Human investigation required.
+                obj = strict_loads(tail.decode("ascii"))
+                canonical = isinstance(obj, dict) and _canon(obj).encode("ascii") == tail
+            except (ValueError, LedgerError, RecursionError):
+                canonical = False
+            if canonical:
+                raise LedgerError("linha final canonica sem LF: reparo destrutivo recusado")
+            # Verify complete prefix and anchor BEFORE truncating anything.
+            entries = [_parse_line(line) for line in raw[:cut].split(b"\n")[:-1]]
+            prev = GENESIS_HASH
+            offsets = []
+            pos = 0
+            for seq, obj in enumerate(entries):
+                _check_entry(obj, seq, prev, key)
+                end = pos + len(_canon(obj)) + 1
+                offsets.append((pos, end))
+                pos = end
+                prev = obj["hash"]
+            a = _read_anchor(ap, key)
+            if entries:
+                if (a is None or a["seq"] >= len(entries) or len(entries)-1-a["seq"] > 1
+                        or a["hash"] != entries[a["seq"]]["hash"]
+                        or (a["offset"], a["end"]) != offsets[a["seq"]]):
+                    raise LedgerError("prefixo/ancora invalido; reparo recusado")
+            elif a is not None:
+                raise LedgerError("ancora alem do prefixo; reparo recusado")
+            if on_head is not None and not callable(on_head):
+                raise LedgerError("on_head deve ser funcao")
+            payload = {"removed_bytes": len(tail),
+                       "removed_sha256": hashlib.sha256(tail).hexdigest(),
+                       "approver": approver, "reason": reason}
+            # Build/authenticate the whole audit entry BEFORE touching bytes.
+            encoded = encode_data(payload, encrypt)
+            obj = _seal({"schema": SCHEMA_VERSION, "seq": len(entries),
+                         "ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                         "agent": "acltd_repair", "kind": "repair", "payload": encoded,
+                         "encrypted": encrypt is not None, "external_action_allowed": 0,
+                         "prev_hash": prev}, key)
+            obj["hash"] = _entry_hash(obj)
+            line = (_canon(obj) + "\n").encode("ascii")
+            with open(ledger_path, "r+b") as f:
+                f.truncate(cut)
+                f.seek(cut)
+                f.write(line)
+                f.flush()
+                os.fsync(f.fileno())
+            _write_anchor(ap, obj["seq"], obj["hash"], key, cut, cut + len(line))
+            if on_head is not None:
+                try:
+                    on_head(obj["seq"], obj["hash"])
+                except Exception:
+                    raise LedgerError("on_head falhou; reparo local ja persistido; reconciliar cabeca externa") from None
+            return obj
+    except (OSError, ValueError, TypeError, RecursionError) as e:
+        raise LedgerError("reparo I/O/estrutura falhou: " + str(e)) from None
+
+
+def migrate_from_legacy(legacy_path, ledger_path, key, approver, *, legacy_anchor_path=None,
+                        on_head=None, encrypt=None):
+    approval_text(approver)
+    _key(key)
+    with ledger_lock(legacy_path), ledger_lock(ledger_path):
+        if os.path.realpath(legacy_path) == os.path.realpath(ledger_path) or os.path.exists(ledger_path) or os.path.exists(default_anchor_path(ledger_path)):
+            raise LedgerError("migracao exige diario NOVO em caminho distinto")
+        ok, det = verify_legacy(legacy_path, legacy_anchor_path)
+        if not ok or not det.get("entries"):
+            raise LedgerError("legado invalido/vazio: " + str(det))
+        return append_entry(ledger_path, "migration", {"legacy_head": det["head_hash"],
+                            "legacy_entries": det["entries"], "approver": approver,
+                            "legacy_authenticated": False}, key=key, on_head=on_head, encrypt=encrypt)
 
 
 if __name__ == "__main__":
-    if len(sys.argv) >= 3 and sys.argv[1] == "verify":
-        ap = sys.argv[3] if len(sys.argv) > 3 else None
-        ok, det = verify_chain(sys.argv[2], ap)
-        print(json.dumps({"ok": ok, "source": "acltd_ledger",
-                          "external_action_allowed": False,
-                          "requires_favini": False, "data": det}))
-        sys.exit(0 if ok else 1)
-    if len(sys.argv) >= 3 and sys.argv[1] == "adopt":
-        ap = sys.argv[3] if len(sys.argv) > 3 else None
-        try:
-            out = adopt_anchor(sys.argv[2], ap)
-            print(json.dumps({"ok": True, "source": "acltd_ledger",
-                              "external_action_allowed": False,
-                              "requires_favini": True, "data": out}))
-            sys.exit(0)
-        except LedgerError as e:
-            print(json.dumps({"ok": False, "source": "acltd_ledger",
-                              "external_action_allowed": False,
-                              "requires_favini": True, "data": {"error": str(e)}}))
-            sys.exit(1)
-    print("uso: python acltd_ledger.py verify|adopt <ledger.jsonl> [ancora]")
+    print(json.dumps({"ok": False, "external_action_allowed": 0,
+                      "error": "use API com chave bytes/funcao; CLI nao recebe segredos"}))
     sys.exit(2)
