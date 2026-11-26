@@ -1,0 +1,78 @@
+{
+ "version_under_test": "1.4.4",
+ "results": [
+  {
+   "test": "T47_V1_HMAC",
+   "finding": "V1",
+   "ok": false,
+   "detail": "recomputed unkeyed history accepted=True"
+  },
+  {
+   "test": "T48_V2_prompt_channels",
+   "finding": "V2",
+   "ok": false,
+   "detail": "reserved markers/newlines refused; six identical system/user pairs=False"
+  },
+  {
+   "test": "T49_V6_approver",
+   "finding": "V6",
+   "ok": false,
+   "detail": "approver parameter missing; fixed authority in 1.4.4"
+  },
+  {
+   "test": "T50_C1_torn_tail",
+   "finding": "C1",
+   "ok": false,
+   "detail": "verify/restore refuse but approved repair is missing"
+  },
+  {
+   "test": "T51_C2_latest_checkpoint",
+   "finding": "C2",
+   "ok": false,
+   "detail": "normal latest=B; mixed old A refused=False"
+  },
+  {
+   "test": "T52_C3_writer_lock",
+   "finding": "C3",
+   "ok": false,
+   "detail": "no OS lock or LedgerBusy in 1.4.4 (original race recorded separately)"
+  },
+  {
+   "test": "T53_C4_incremental",
+   "finding": "C4",
+   "ok": false,
+   "detail": "{\"exact_ms\": {\"10\": 14.102, \"300\": 26.331, \"900\": 52.352, \"1500\": 64.971}, \"incremental\": false, \"ratio\": 4.750697877413617, \"total_seconds\": 68.929, \"window_median_ms\": {\"10\": 15.206849995593075, \"1500\": 72.24314999621129}}"
+  },
+  {
+   "test": "T54_C5_directory_fsync",
+   "finding": "C5",
+   "ok": false,
+   "detail": "directory fsync missing after replace"
+  },
+  {
+   "test": "T55_V5_cipher_hooks",
+   "finding": "V5",
+   "ok": false,
+   "detail": "encryption hooks missing; plaintext exposed"
+  },
+  {
+   "test": "T56_legacy_migration",
+   "finding": "migration",
+   "ok": false,
+   "detail": "explicit migration API missing"
+  },
+  {
+   "test": "T57_fail_closed_edges",
+   "finding": "edge",
+   "ok": false,
+   "detail": "2.0 repair/authentication API missing"
+  },
+  {
+   "test": "T58_encrypted_phase_recovery",
+   "finding": "cipher_recovery",
+   "ok": false,
+   "detail": "cipher hooks missing"
+  }
+ ],
+ "ok": false
+}

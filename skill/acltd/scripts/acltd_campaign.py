@@ -1,5 +1,5 @@
 # -*- coding: ascii -*-
-"""ACLTD Campaign Runner v1.4.4 - campanha estendida reprodutivel.
+"""ACLTD Campaign Runner v2.0.0 - campanha estendida reprodutivel.
 
 Executa cenarios hostis deterministas de corrupcao, queda e reboot. Nao
 substitui acltd_selftest.py; serve para reproduzir references/campaign_results.
@@ -17,7 +17,12 @@ sys.path.insert(0, HERE)
 
 from acltd_ledger import append_entry, verify_chain, default_anchor_path
 from acltd_checkpoint import write_checkpoint, restore_checkpoint
-from acltd_selftest import sample_state
+from acltd_selftest import sample_state, TEST_KEY, TEST_APPROVER
+from functools import partial
+append_entry = partial(append_entry, key=TEST_KEY)
+verify_chain = partial(verify_chain, key=TEST_KEY)
+write_checkpoint = partial(write_checkpoint, key=TEST_KEY)
+restore_checkpoint = partial(restore_checkpoint, key=TEST_KEY)
 
 
 def _write(path, data):
@@ -152,8 +157,11 @@ def c6_reboot_cycles(work, volume=100):
     write_checkpoint(d, sample_state(), lp)
     failures = 0
     for i in range(volume):
-        p = subprocess.run([sys.executable, os.path.join(HERE, "acltd_checkpoint.py"),
-                            "restore", d, lp],
+        p = subprocess.run([sys.executable, "-c",
+                            "import sys;sys.path.insert(0,sys.argv[1]);"
+                            "from acltd_checkpoint import restore_checkpoint;"
+                            "r=restore_checkpoint(sys.argv[2],sys.argv[3],key=" + repr(TEST_KEY) + ");"
+                            "sys.exit(0 if r['ok'] else 1)", HERE, d, lp],
                            capture_output=True, text=True)
         if p.returncode != 0:
             failures += 1
@@ -187,7 +195,7 @@ def main():
     }
     ok = all(c["ok"] for c in campaigns.values())
     out = {"ok": ok, "source": "acltd_campaign",
-           "external_action_allowed": False, "requires_favini": True,
+           "external_action_allowed": False, "requires_approval": True, "approver": TEST_APPROVER,
            "data": {"work": "temporary_test_workspace",
                     "campaigns": campaigns}}
     if update_reference:

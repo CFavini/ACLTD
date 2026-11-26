@@ -1,0 +1,78 @@
+{
+ "version_under_test": "2.0.0",
+ "results": [
+  {
+   "test": "T47_V1_HMAC",
+   "finding": "V1",
+   "ok": true,
+   "detail": "forgery/key/anchor/external rollback refused; callback verified"
+  },
+  {
+   "test": "T48_V2_prompt_channels",
+   "finding": "V2",
+   "ok": true,
+   "detail": "reserved markers/newlines refused; six identical system/user pairs=True"
+  },
+  {
+   "test": "T49_V6_approver",
+   "finding": "V6",
+   "ok": true,
+   "detail": "required configurable approver and generic envelope"
+  },
+  {
+   "test": "T50_C1_torn_tail",
+   "finding": "C1",
+   "ok": true,
+   "detail": "partial bytes audited; full prefix unchanged; canonical final entry preserved"
+  },
+  {
+   "test": "T51_C2_latest_checkpoint",
+   "finding": "C2",
+   "ok": true,
+   "detail": "normal latest=B; mixed old A refused=True"
+  },
+  {
+   "test": "T52_C3_writer_lock",
+   "finding": "C3",
+   "ok": true,
+   "detail": "2 writers x40; entries=81 errors=[[], []]; timeout=LedgerBusy"
+  },
+  {
+   "test": "T53_C4_incremental",
+   "finding": "C4",
+   "ok": true,
+   "detail": "{\"exact_ms\": {\"10\": 24.08, \"300\": 18.356, \"900\": 24.064, \"1500\": 19.747}, \"incremental\": true, \"ratio\": 0.9232194824406399, \"total_seconds\": 29.986, \"window_median_ms\": {\"10\": 21.664350002538413, \"1500\": 20.00094999675639}}"
+  },
+  {
+   "test": "T54_C5_directory_fsync",
+   "finding": "C5",
+   "ok": true,
+   "detail": "3 replacements each followed by directory sync; simulated POSIX open/fsync/close"
+  },
+  {
+   "test": "T55_V5_cipher_hooks",
+   "finding": "V5",
+   "ok": true,
+   "detail": "ciphertext-only payload/state; roundtrip; missing decrypt/tamper refused (fake hook NOT SECURE)"
+  },
+  {
+   "test": "T56_legacy_migration",
+   "finding": "migration",
+   "ok": true,
+   "detail": "legacy read-only; new journal records old head/approver; no historical authentication claimed"
+  },
+  {
+   "test": "T57_fail_closed_edges",
+   "finding": "edge",
+   "ok": true,
+   "detail": "wrong key/hook/prefix refuse without truncation; callback failure reports persisted append; invalid inputs typed"
+  },
+  {
+   "test": "T58_encrypted_phase_recovery",
+   "finding": "cipher_recovery",
+   "ok": true,
+   "detail": "interrupted encrypted transaction repaired without plaintext downgrade; read-only restore leaves pending"
+  }
+ ],
+ "ok": true
+}

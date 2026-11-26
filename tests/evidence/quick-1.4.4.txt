@@ -1,0 +1,5 @@
+FAIL manifesto  | 10 arquivos, divergentes: ['./SKILL.md', './references/PROTOCOLO_ACLTD.md', './references/campaign_results.json', './references/selftest_results.json', './scripts/acltd_campaign.py', './scripts/acltd_checkpoint.py', './scripts/acltd_context_pack.py', './scripts/acltd_ledger.py', './scripts/acltd_selftest.py', './scripts/quick_validate.py']
+PASS py_compile  | []
+PASS ascii_ps51  | []
+PASS selftest  | RESULTADO: 49/49 testes aprovados (100.0%)
+{"ok": false, "source": "acltd_quick_validate", "external_action_allowed": false, "requires_favini": true, "data": {"steps": [{"step": "manifesto", "ok": false, "detail": "10 arquivos, divergentes: ['./SKILL.md', './references/PROTOCOLO_ACLTD.md', './references/campaign_results.json', './references/selftest_results.json', './scripts/acltd_campaign.py', './scripts/acltd_checkpoint.py', './scripts/acltd_context_pack.py', './scripts/acltd_ledger.py', './scripts/acltd_selftest.py', './scripts/quick_validate.py']"}, {"step": "py_compile", "ok": true, "detail": "[]"}, {"step": "ascii_ps51", "ok": true, "detail": "[]"}, {"step": "selftest", "ok": true, "detail": "RESULTADO: 49/49 testes aprovados (100.0%)"}]}}

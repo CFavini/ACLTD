@@ -41,6 +41,13 @@ def check_manifest():
         n += 1
         if h != expected:
             bad.append(rel)
+    sidecar = mpath + ".sha256"
+    try:
+        expected = open(sidecar, encoding="ascii").read().split()[0]
+        if hashlib.sha256(open(mpath, "rb").read()).hexdigest() != expected:
+            bad.append("MANIFEST_SHA256.txt.sha256")
+    except (OSError, IndexError):
+        bad.append("manifest sidecar absent/invalid")
     step("manifesto", len(bad) == 0, "%d arquivos, divergentes: %s" % (n, bad))
 
 
@@ -80,6 +87,6 @@ if __name__ == "__main__":
     ok = all(s["ok"] for s in steps)
     print(json.dumps({"ok": ok, "source": "acltd_quick_validate",
                       "external_action_allowed": False,
-                      "requires_favini": True,
+                      "requires_approval": True, "approver": "test reviewer",
                       "data": {"steps": steps}}))
     sys.exit(0 if ok else 1)

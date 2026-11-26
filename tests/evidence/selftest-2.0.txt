@@ -1,0 +1,64 @@
+PASS T1_cadeia_hash  | {"entries": 5, "head_hash": "b7bf9c799d350ef963335ad005a682401eda295cf95a2447cc0b2cb02c19a60f", "anchored": true}
+PASS T2_deteccao_tamper  | {"error": "hash adulterado", "fail_closed": true}
+PASS T3_crash_meio_escrita
+PASS T4_reboot_processo_novo
+PASS T5_restore_idempotente
+PASS T6_troca_provedor  | turnos 2/2
+PASS T7_compactacao_preserva_fatos  | turnos 22/200
+PASS T7b_orcamento_impossivel_fail_closed
+PASS T8_rollback_so_checkpoint_recusado  | checkpoint mais antigo que o último confirmado (possível backup misturado)
+PASS T9_ascii_safe_ps51  | []
+PASS T10_append_apos_tamper_recusado  | LedgerError levantado
+PASS T11_rollback_coordenado_detectado  | ledger invalido: {'error': 'linha nao canonica', 'fail_closed': True}
+PASS T12_fato_sem_fonte_recusado  | estado invalido: pinned_fact[3] sem 'source' auditavel
+PASS T13_queda_antes_commit_recuperada  | recuperado: queda entre checkpoint e commit; commit reparado
+PASS T13r_reparo_persistente
+PASS T13b_queda_antes_arquivo_recupera_anterior  | recuperado: queda antes da escrita; restaurado ultimo estado commitado; gap declarado
+PASS T14_caminhos_portaveis  | tempfile workspace verified
+PASS T15_ancora_corrompida_fail_closed  | {"error": "ancora invalida: Expecting property name enclosed in double quotes: line 1 column 2 (char 1)", "fail_closed": true}
+PASS T16_seq_nao_monotonico_recusado  | {"error": "seq nao monotonico", "fail_closed": true}
+PASS T17_estado_shape_invalido_recusado  | estado invalido: last_turns[0] nao e objeto
+PASS T18_restore_revalida_estado  | estado invalido: pinned_fact[0] sem 'source' auditavel
+PASS T19_provider_desconhecido_recusado  | estado invalido: provider.name invalido: provedor-fantasma
+PASS T20_delecao_ancora_rollback_recusado  | ledger invalido: {'error': 'ledger nao vazio sem ancora', 'fail_closed': True}
+PASS T21_role_injection_recusado  | estado invalido: last_turns[0] role invalido (permitidos: user, assistant)
+PASS T22_fuzz_ledger_300  | excecoes cruas=0 aceitos=0
+PASS T23_fuzz_checkpoint_300  | excecoes cruas=0 aceites indevidos=0
+PASS T24_fuzz_ancora_200  | excecoes cruas=0 aceitos=0
+PASS T25_truncamento_ledger  | 66 posicoes; excecoes=0 aceitos com perda=0
+PASS T26_ancora_tmp_abandonada  | {"entries": 1, "head_hash": "7e1cdf24a26d7e39671f0a6e1548a0f9ff6f390a872994e71004973114af88f9", "anchored": true}
+PASS T27_payload_nao_ascii  | arquivo ASCII=True roundtrip=True
+PASS T28_restore_funcao_total  | []
+PASS T29_adocao_ancora_legada  | 2.0: no implicit adoption; explicit migration covered by T56
+PASS T30_ancora_atrasada_pos_queda  | piso aceito=True reancorado em seq=2
+PASS T31_chave_duplicada_recusada  | linha invalida: chave JSON duplicada: agent
+PASS T32_linha_nao_canonica_recusada  | linha nao canonica
+PASS T33_nan_checkpoint_recusado  | escrita=True leitura=True
+PASS T34_nan_ledger_recusado  | append=True verify=True
+PASS T35_nao_serializavel_fail_closed  | ledger=True checkpoint=True
+PASS T36_resume_role_system_recusado  | estado invalido: last_turns[0] role invalido (permitidos: user, assistant)
+PASS T37_resume_funcao_total  | falhas=0/7
+PASS T38_consistencia_documental  | []
+PASS T39_bordas_linhas_branco_recusadas  | []
+PASS T40_schemas_malignos_recusados  | ckpt=True ancora=True entrada=True
+PASS T41_resume_versionado  | esperado v2.0.0
+PASS T42_ancora_atrasada_demais_recusada  | ancora atrasada demais
+PASS T43_newline_windows_contract  | lf=True crlf_recusado=True source=True
+PASS T44_kind_whitelist  | append=True verify=True
+PASS T45_payload_objeto_obrigatorio  | append=True verify=True
+PASS T46_tencent_nous_providers  | tencent=True nous=True
+PASS T47_V1_HMAC  | forgery/key/anchor/external rollback refused; callback verified
+PASS T48_V2_prompt_channels  | reserved markers/newlines refused; six identical system/user pairs=True
+PASS T49_V6_approver  | required configurable approver and generic envelope
+PASS T50_C1_torn_tail  | partial bytes audited; full prefix unchanged; canonical final entry preserved
+PASS T51_C2_latest_checkpoint  | normal latest=B; mixed old A refused=True
+PASS T52_C3_writer_lock  | 2 writers x40; entries=81 errors=[[], []]; timeout=LedgerBusy
+PASS T53_C4_incremental  | {"exact_ms": {"10": 17.743, "300": 14.912, "900": 15.07, "1500": 17.542}, "incremental": true, "ratio": 0.8761544560697634, "total_seconds": 24.278, "window_median_ms": {"10": 17.08055000199238, "1500": 14.965199996368028}}
+PASS T54_C5_directory_fsync  | 3 replacements each followed by directory sync; simulated POSIX open/fsync/close
+PASS T55_V5_cipher_hooks  | ciphertext-only payload/state; roundtrip; missing decrypt/tamper refused (fake hook NOT SECURE)
+PASS T56_legacy_migration  | legacy read-only; new journal records old head/approver; no historical authentication claimed
+PASS T57_fail_closed_edges  | wrong key/hook/prefix refuse without truncation; callback failure reports persisted append; invalid inputs typed
+PASS T58_encrypted_phase_recovery  | interrupted encrypted transaction repaired without plaintext downgrade; read-only restore leaves pending
+------------------------------------------------------------
+RESULTADO: 61/61 testes aprovados (100.0%)
+resultados: skill\acltd\references\selftest_results.json

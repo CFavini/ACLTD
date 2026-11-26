@@ -1,0 +1,63 @@
+[
+ {
+  "achado": "V1",
+  "resultado": "PROTEGIDO",
+  "detalhe": "forgery/key/anchor/external rollback refused; callback verified"
+ },
+ {
+  "achado": "V2",
+  "resultado": "PROTEGIDO",
+  "detalhe": "reserved markers/newlines refused; six identical system/user pairs=True"
+ },
+ {
+  "achado": "V6",
+  "resultado": "PROTEGIDO",
+  "detalhe": "required configurable approver and generic envelope"
+ },
+ {
+  "achado": "C1",
+  "resultado": "PROTEGIDO",
+  "detalhe": "partial bytes audited; full prefix unchanged; canonical final entry preserved"
+ },
+ {
+  "achado": "C2",
+  "resultado": "PROTEGIDO",
+  "detalhe": "normal latest=B; mixed old A refused=True"
+ },
+ {
+  "achado": "C3",
+  "resultado": "PROTEGIDO",
+  "detalhe": "2 writers x40; entries=81 errors=[[], []]; timeout=LedgerBusy"
+ },
+ {
+  "achado": "C4",
+  "resultado": "PROTEGIDO",
+  "detalhe": "{\"exact_ms\": {\"10\": 20.399, \"300\": 22.62, \"900\": 26.65, \"1500\": 15.48}, \"incremental\": true, \"ratio\": 0.7827112972224397, \"total_seconds\": 36.502, \"window_median_ms\": {\"10\": 20.213199983118102, \"1500\": 15.821099979802966}}"
+ },
+ {
+  "achado": "C5",
+  "resultado": "PROTEGIDO",
+  "detalhe": "3 replacements each followed by directory sync; simulated POSIX open/fsync/close"
+ },
+ {
+  "achado": "V5",
+  "resultado": "PROTEGIDO",
+  "detalhe": "ciphertext-only payload/state; roundtrip; missing decrypt/tamper refused (fake hook NOT SECURE)"
+ },
+ {
+  "achado": "V3",
+  "resultado": "FORA_DO_ESCOPO_ADAPTADOR",
+  "detalhe": "Core does not authorize provider/data level or tenant/path identity; integration adapter."
+ },
+ {
+  "achado": "V4",
+  "resultado": "FORA_DO_ESCOPO_ADAPTADOR",
+  "detalhe": "Core does not authorize provider/data level or tenant/path identity; integration adapter."
+ },
+ {
+  "achado": "C6",
+  "resultado": "PROTEGIDO",
+  "detalhe": "conjunto antigo inteiro: ok=True; diario novo + checkpoint antigo: ok=False; diario antigo + checkpoint novo: ok=False (recusa segura, mas a missao para)"
+ }
+]
+

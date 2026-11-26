@@ -29,5 +29,5 @@
 | `README.md` | Public entry point and SEO anchor |
 | `docs/` | Architecture, MCP alignment, recovery policy, publication guide |
 | `.github/` | Collaboration workflow and CI |
-| `skill/acltd/` | Audited ACLTD v1.4.4 source package |
+| `skill/acltd/` | ACLTD v2.0.0 stable source package |
 | `assets/` | Public figures and social preview assets |
